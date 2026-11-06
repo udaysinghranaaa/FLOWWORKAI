@@ -2,9 +2,39 @@
 
 **One Workspace. Every Workflow. Powered by AI.**
 
-FlowWork AI is a planned multi-tenant SaaS workspace for software development and digital marketing agencies. It brings delivery tasks, client-visible milestones, support conversations and permission-aware knowledge assistance into a shared workflow.
+FlowWork AI is an agency work management product in development. The executable Phase 2 React frontend demonstrates project delivery, tasks, client collaboration, support conversations, analytics and the planned AI experience using fictional data.
 
-**Current status: Phase 1 planning and documentation complete. No application code, working product, installed dependencies, deployed infrastructure or validated customer results exist. Phase 2 has not started and requires explicit instruction.**
+**Current scope: Phase 2 frontend demo. Phase 1 documentation is preserved. The backend, real authentication, payments, email, uploads, live AI and real-time infrastructure are not implemented. Phase 3 has not started.**
+
+## Run locally on Windows
+
+Use Node.js 24 LTS (tested with 24.15.0), or a supported Node 22 release from 22.13.0. Dependencies live inside `frontend/`; there is no root install or backend package.
+
+```powershell
+Set-Location C:\FLOWWORKAI\frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Open the Local URL printed by Vite, normally `http://127.0.0.1:5173/`. Select **Explore Demo Workspace** to enter without signup. `npm.cmd` works when PowerShell execution policy blocks `npm.ps1`; ordinary `npm install` / `npm run dev` work in shells that allow it.
+
+All projects, people and statistics are fictional. Domain changes stay in memory until refresh. Theme and sidebar preferences alone persist in localStorage. The client portal is a presentation preview and does not provide a secure session or authorization boundary.
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run test
+npm.cmd run build
+npm.cmd run test:e2e
+```
+
+Playwright uses installed Google Chrome by default. See the [frontend architecture guide](docs/phase-2-frontend-architecture.md) for the bundled Chromium alternative, test details, component/state explanations and future integration plan. No environment variable or secret is needed for this demo.
+
+## Implemented frontend modules
+
+Public landing/features/pricing; validated login/signup/recovery forms with honest unavailable-integration messages; onboarding and workspace switching; dashboard; project create/edit/list/detail; task create/edit/assign/filter and list/Kanban views; pointer dragging and keyboard-accessible status controls; task comments; clients and contacts; team profiles and pending demo invitations; support cases with public replies/internal notes; client-facing projects/milestones/feedback/support; notification read state; scripted FlowAI conversations; sample knowledge documents and local file metadata preview; Recharts analytics with date controls and local CSV export; workspace/account/appearance/notification settings; illustrative Starter/Growth/Business plans.
+
+The Phase 2 brief expands the original UI foundation into a complete connected frontend preview. Future roadmap phases still own production business rules, persistence and integrations. Phase 1 documents describe the target system; the Phase 2 guide and final report describe what actually runs today.
 
 ## Problem and customer hypothesis
 
@@ -30,11 +60,13 @@ Launch AI is internal and read-only. Teams initially mean workspace/project memb
 | Files | Private S3-compatible storage, clean-only access and malware scanning |
 | Verification/operations | Vitest, Supertest, Playwright; Docker/Compose; GitHub Actions; validated environment configuration |
 
-Runtime/library versions and provider-specific choices will be verified and pinned when implementation is authorized. There is intentionally no install/run command or package manifest yet.
+Frontend dependencies are recorded in `frontend/package.json` and locked in `frontend/package-lock.json`. React Router handles navigation, Radix/shadcn components provide primitives, Tailwind 4 uses its Vite plugin, React Hook Form/Zod validate forms, and Recharts/dnd-kit/Sonner support charts, boards and feedback. Backend/provider choices remain planned. The dependency audit and compatibility decisions are recorded in the Phase 2 report.
 
 ## Architecture summary
 
-Use a modular monolith with domain-owned services and repositories. A React browser communicates with one Express API/socket boundary; a worker from the same backend processes durable side effects and AI ingestion. Shared MongoDB tenant collections require workspaceId; current membership, project grants, client association and publication narrow every action. Global identity, session and plan data have explicit separate access paths. Socket hints reconcile through durable HTTP state. AI retrieval prefilters authorized source IDs and rechecks live ACLs before exposing content.
+The implemented frontend is organized into feature pages, shared components, typed fixtures and a replaceable in-memory repository. TanStack Query is configured for future remote state; local demo records use a subscribed repository, and Zustand owns UI preferences. No network service is impersonated.
+
+The planned production system remains a modular monolith with domain-owned services and repositories. A React browser will communicate with one Express API/socket boundary; a worker from the same backend will process durable side effects and AI ingestion. MongoDB tenant records will require workspaceId and server-enforced membership/resource/client rules. Those security controls are documentation targets, not implemented frontend guarantees.
 
 This trades physical tenant isolation and independent domain deployment for simpler transactions and lower early operational burden. Tests, explicit query scope and careful serializers are essential. No microservices or Kubernetes are planned for MVP.
 
@@ -43,7 +75,7 @@ This trades physical tenant isolation and independent domain deployment for simp
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Planning and Architecture | Documentation complete |
-| 2 | Premium React UI Foundation | Planned; requires instruction |
+| 2 | Complete premium React frontend demo | Implemented; see Phase 2 report for verification |
 | 3 | Express Backend Foundation | Planned |
 | 4 | MongoDB and Authentication | Planned |
 | 5 | Workspaces, Teams and Multi-Tenancy | Planned |
@@ -70,6 +102,8 @@ The launch MVP is the minimum scope after integrated gates through Phase 12, not
 - [08 · Security and tenancy](docs/08-security-and-tenancy.md): threat model, auth, files, RAG, retention and release tests.
 - [09 · Development roadmap](docs/09-development-roadmap.md): all 13 phase gates.
 - [10 · Phase 1 verification and final report](docs/10-phase-1-verification.md): actual review results, exact files, risks and interview concepts.
+- [Phase 2 · Frontend architecture](docs/phase-2-frontend-architecture.md): setup, folder structure, components, hooks, state, fixtures, routing, tests and integration boundaries.
+- [Phase 2 · Verification and final report](docs/phase-2-final-report.md): exact file inventory, actual commands/results, acceptance criteria, limitations and Phase 3 prerequisites.
 - [ADR 001 · Modular monolith](docs/architecture-decisions/001-modular-monolith.md)
 - [ADR 002 · MongoDB](docs/architecture-decisions/002-mongodb.md)
 - [ADR 003 · Session authentication](docs/architecture-decisions/003-session-authentication.md)

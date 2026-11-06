@@ -1,6 +1,10 @@
 # FlowWork AI engineering rules
 
-Current authorized scope: **Phase 1 planning and documentation only**. No application features have been implemented. Phase 2 requires explicit user instruction.
+Current authorized scope: **Phase 2 frontend development**, explicitly requested after Phase 1. Build a clearly labeled frontend-only demo; do not implement backend, real authentication, payments, AI calls or server infrastructure. Stop after Phase 2.
+
+Phase 2 frontend implementation and verification are complete. Read docs/phase-2-frontend-architecture.md and docs/phase-2-final-report.md for the actual running scope. Phase 3 remains unauthorized until explicitly requested.
+
+Mandatory folder convention: all React code and frontend dependencies/configuration belong in root-level `frontend/`. Future Express code/dependencies belong in root-level `backend/`, which remains absent or empty until Phase 3. Do not create `apps/web`, `apps/api`, `frontend/frontend` or `backend/backend`. Keep environment variables separate and never expose backend secrets to the browser. Preserve Phase 1 documents; update affected path conventions only, and document current implementation in the Phase 2 report.
 
 1. Read the documentation and repository structure before changing files. Start with README.md, docs/01-product-requirements.md and the relevant architecture documents.
 2. Implement only the requested phase; distinguish planned behavior from implemented behavior.

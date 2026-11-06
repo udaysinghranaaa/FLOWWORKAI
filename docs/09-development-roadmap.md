@@ -21,7 +21,7 @@ Testing requirements below describe future gates, not tests already executed. Fi
 - Objectives: establish accessible visual primitives and navigation with clearly labeled fixture data.
 - Prerequisites: approved design/route scope; instruction to start Phase 2; confirm package/runtime versions then.
 - Features: Vite React TypeScript shell, Tailwind semantic themes, shadcn/Radix/Lucide, React Router public/internal/client shells, TanStack Query provider, Zustand UI-only store, form conventions. Static page foundations follow document 07; no claim of backend auth.
-- Files/modules: apps/web/src/app, routes, components, styles, features/* presentation; web package/build config.
+- Files/modules: frontend/src/app, routes, components, styles, features/* presentation; web package/build config.
 - Concepts: component composition, accessibility, remote versus UI state, route nesting, responsive design.
 - Deliverables: reusable primitives, shell navigation, representative dashboard/task/portal layouts using fixtures, visual catalog.
 - Tests: Vitest for meaningful stateful interactions; Playwright keyboard navigation/theme/mobile critical journeys, contrast measurements and manual screen-reader check.
@@ -33,7 +33,7 @@ Testing requirements below describe future gates, not tests already executed. Fi
 - Objectives: create modular Node/Express TypeScript service foundation without implementing all business domains.
 - Prerequisites: authorized phase, API conventions and infrastructure decisions reviewed.
 - Features: config validation, route/controller/service boundaries, Zod transport validation, JSON error envelopes, request IDs, structured redacted logging, health/readiness, graceful shutdown; select Redis job library and adapter strategy with rationale.
-- Files/modules: apps/api/src/bootstrap, config, http, shared, module skeletons; packages/contracts; package scripts.
+- Files/modules: backend/src/bootstrap, config, http, shared, module skeletons; packages/contracts; package scripts.
 - Concepts: middleware order, dependency boundaries, error taxonomy, process health, backpressure.
 - Deliverables: backend skeleton, bounded parsers, Docker development draft, test harness; no fake DB readiness.
 - Tests: Supertest validation/error/redaction/CSRF bootstrap contracts where applicable, malformed bodies and startup config failure.

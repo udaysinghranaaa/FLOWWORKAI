@@ -32,9 +32,9 @@ Trust boundaries: browser and uploaded documents are untrusted; edge-to-API requ
 Future layout, not created in Phase 1:
 
 ```text
-apps/web/src/{app,routes,features,components,lib,styles}
-apps/api/src/{bootstrap,config,http,realtime,workers,shared}
-apps/api/src/modules/{auth,users,workspaces,members,clients,projects,tasks,
+frontend/src/{app,routes,features,components,lib,styles}
+backend/src/{bootstrap,config,http,realtime,workers,shared}
+backend/src/modules/{auth,users,workspaces,members,clients,projects,tasks,
   milestones,attachments,tickets,notifications,knowledge,ai,analytics,billing,audit}
 packages/contracts/       transport Zod schemas and DTO types, no database code
 infra/                   Docker, Compose, deployment templates
