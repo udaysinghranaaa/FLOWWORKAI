@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "outDir": ".test-runtime", "sourceMap": false },
+  "include": ["scripts/test-server.ts"]
+}

@@ -12,6 +12,9 @@ const Features = lazy(() =>
 const Pricing = lazy(() => import('@/features/billing/pricing-page'))
 const Auth = lazy(() => import('@/features/auth/auth-page'))
 const Onboarding = lazy(() => import('@/features/auth/onboarding-page'))
+const Verification = lazy(() => import('@/features/auth/verification-page'))
+const ProtectedRoute = lazy(() => import('@/features/auth/protected-route'))
+const Account = lazy(() => import('@/features/auth/account-page'))
 const Dashboard = lazy(() => import('@/features/dashboard/dashboard-page'))
 const Workspaces = lazy(() => import('@/features/workspaces/workspaces-page'))
 const Projects = lazy(() => import('@/features/projects/projects-page'))
@@ -58,10 +61,10 @@ export const router = createBrowserRouter([
       { path: paths.signup, element: <Auth key="signup" mode="signup" /> },
       { path: '/forgot-password', element: <Auth key="forgot" mode="forgot" /> },
       { path: '/reset-password', element: <Auth key="reset" mode="reset" /> },
-      { path: '/verify-email', element: <Onboarding verification /> },
+      { path: '/verify-email', element: <Verification /> },
       { path: '/onboarding', element: <Onboarding /> },
       { path: paths.workspaces, element: <Workspaces /> },
-      { path: '/account', element: <Navigate to="/w/studio/settings/account" replace /> },
+      { element: <ProtectedRoute />, children: [{ path: '/account', element: <Account /> }] },
       {
         path: paths.workspace,
         element: <AppShell />,

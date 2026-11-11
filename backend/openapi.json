@@ -1,0 +1,4223 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FlowWork AI - HTTP foundation and database authentication",
+    "version": "0.4.0",
+    "description": "Implemented Phase 3 infrastructure plus Phase 4 MongoDB identity. Authentication uses HttpOnly access JWT/rotating refresh cookies, exact credentialed CORS and session-bound signed CSRF tokens. Production assumes same-site HTTPS hosting. Development examples remain disabled in production. No workspace/business APIs are implemented. See docs/phase-4-database-auth-architecture.md."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:{port}",
+      "description": "Configurable local development HTTP listener. Production URL must be supplied by the deployment environment.",
+      "variables": {
+        "port": {
+          "default": "5000"
+        }
+      }
+    }
+  ],
+  "security": [],
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Development examples",
+      "description": "Disabled in production; no persistence."
+    },
+    {
+      "name": "Authentication",
+      "description": "Real MongoDB identity. Bootstrap CSRF first; unsafe requests require an allowlisted Origin and X-CSRF-Token. Access/refresh credentials never appear in JSON."
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getHealth",
+        "summary": "HTTP service health/readiness summary",
+        "description": "Reports listener/drain state and required MongoDB dependency readiness. A standalone infrastructure-only factory can report phase 3; the real server reports phase 4. No secrets or connection metadata are exposed.",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTTP process ok.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/HealthData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready or draining.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getLiveness",
+        "summary": "HTTP process liveness",
+        "description": "Liveness checks the running HTTP process. It does not imply readiness or any database check.",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTTP process alive.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/HealthData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getReadiness",
+        "summary": "HTTP lifecycle readiness",
+        "description": "Reports listener/drain state and required MongoDB dependency readiness. A standalone infrastructure-only factory can report phase 3; the real server reports phase 4. No secrets or connection metadata are exposed.",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HTTP process ready.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/HealthData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready or draining.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/example": {
+      "get": {
+        "tags": ["Development examples"],
+        "operationId": "listExamples",
+        "summary": "Read a deterministic development catalog",
+        "description": "No records are created or stored. Unknown query fields and repeated/non-integer limits return 422.",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 3
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Non-sensitive demonstration items.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ExampleList"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Demonstration routes are not mounted in production.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body, query or route parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IP-based process-local rate limit exceeded. Health probes are exempt.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds before retry.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit": {
+                "description": "IETF draft-8 rate policy and remaining quota.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Policy": {
+                "description": "IETF draft-8 policy.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Server is draining or a future dependency is unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/example/{code}": {
+      "get": {
+        "tags": ["Development examples"],
+        "operationId": "getExample",
+        "summary": "Read one validated development catalog entry",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["validation", "errors", "observability"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Development catalog entry.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ExampleDetail"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Demonstration routes are not mounted in production.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body, query or route parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IP-based process-local rate limit exceeded. Health probes are exempt.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds before retry.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit": {
+                "description": "IETF draft-8 rate policy and remaining quota.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Policy": {
+                "description": "IETF draft-8 policy.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Server is draining or a future dependency is unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/example/validate": {
+      "post": {
+        "tags": ["Development examples"],
+        "operationId": "validateExample",
+        "summary": "Validate and normalize an example without persistence",
+        "description": "Accepts uncompressed UTF-8 application/json or application/*+json. No cookies, sessions, writes or sensitive inputs are involved. Unknown body/query fields fail validation.",
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationBody"
+              },
+              "example": {
+                "label": "Useful example",
+                "count": 2,
+                "category": "general"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated demonstration output; persisted is false.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ValidationResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON/URL or unreadable request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin is not in the configured allowlist.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Demonstration routes are not mounted in production.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON body exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding/charset or media type.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Body, query or route parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "IP-based process-local rate limit exceeded. Health probes are exempt.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds before retry.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit": {
+                "description": "IETF draft-8 rate policy and remaining quota.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Policy": {
+                "description": "IETF draft-8 policy.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected error.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Server is draining or a future dependency is unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/csrf": {
+      "get": {
+        "tags": ["Authentication"],
+        "operationId": "getCsrf",
+        "summary": "Bootstrap pre-session or session CSRF",
+        "description": "Safe bootstrap, no authentication required. Returns a signed CSRF nonce and creates/refreshes HttpOnly context cookies when needed. Valid tokens are reused until expiry/rotation. CORS restricts browser reads. No token is put into a URL or localStorage.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CsrfData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "register",
+        "summary": "Register a real user pending email verification",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests. Generic 202 for new/existing email prevents an explicit account-existence oracle; no automatic session, workspace or membership is created. Capture mode writes local development mail, not actual delivery.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/RegistrationResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Trimmed before length checks."
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254,
+                    "description": "Trimmed and lowercased across the whole address; provider-specific dot/plus rewriting is not performed."
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "writeOnly": true,
+                    "description": "No silent truncation. Common local denylist values are rejected; spaces/paste/password managers supported."
+                  }
+                },
+                "required": ["name", "email", "password"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "login",
+        "summary": "Check password and verified account, create session",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Generic invalid credentials, including disabled account.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254,
+                    "description": "Trimmed and lowercased across the whole address; provider-specific dot/plus rewriting is not performed."
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "refresh",
+        "summary": "Atomically rotate refresh family credentials",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "refreshCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthResult"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked or replayed refresh. A recognized replay commits family revocation; simultaneous raw refreshes fail closed. Browser client coordinates refresh with single-flight/Web Locks.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "logout",
+        "summary": "Idempotently revoke current family and clear cookies",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed, no body. Auth cookies are cleared using matching attributes.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "logoutAll",
+        "summary": "Revoke every family using the user authentication epoch",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed, no body. Auth cookies are cleared using matching attributes.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Valid access/session required.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "operationId": "getMe",
+        "summary": "Return current safe verified identity",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/SafeUser"
+                        }
+                      },
+                      "required": ["user"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid/expired JWT or inactive database session/account.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "forgotPassword",
+        "summary": "Request one-time password reset instructions",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests. Response is identical for known/unknown accounts. Mail acceptance is not promised by this response.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthMessage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254,
+                    "description": "Trimmed and lowercased across the whole address; provider-specific dot/plus rewriting is not performed."
+                  }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "resetPassword",
+        "summary": "Consume reset token, replace hash and revoke all sessions",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Completed, no body. Auth cookies are cleared using matching attributes.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Set-Cookie": {
+                "description": "May occur multiple times, one cookie per header line. Production uses __Host-fw_* HttpOnly; Secure; SameSite=Lax; Path=/; no Domain. Local development uses fw_* without Secure. Logout/reset clear matching cookies. Access/refresh secrets are not in the JSON response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Token invalid, expired, consumed or no longer eligible.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "minLength": 43,
+                    "maxLength": 43,
+                    "writeOnly": true,
+                    "description": "One-time mail token; stored only as SHA-256 in MongoDB. Mail links carry it in a URL fragment."
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "writeOnly": true,
+                    "description": "No silent truncation. Common local denylist values are rejected; spaces/paste/password managers supported."
+                  }
+                },
+                "required": ["token", "password"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "verifyEmail",
+        "summary": "Consume verification token and verify address",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "verified": {
+                          "type": "boolean",
+                          "enum": [true]
+                        }
+                      },
+                      "required": ["verified"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Token invalid, expired, consumed or no longer eligible.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "minLength": 43,
+                    "maxLength": 43,
+                    "writeOnly": true,
+                    "description": "One-time mail token; stored only as SHA-256 in MongoDB. Mail links carry it in a URL fragment."
+                  }
+                },
+                "required": ["token"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "tags": ["Authentication"],
+        "operationId": "resendVerification",
+        "summary": "Request replacement verification instructions",
+        "description": "Global API IP limit applies. Credential/action endpoints additionally share 20 attempts per 15 minutes/IP. Email resend/recovery issuance has a 60-second per-account guard. Preflight is handled by exact-origin CORS. All unsafe methods require CSRF including pre-auth requests.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Completed. Credentials are never returned in JSON.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthMessage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON exceeds 16 KiB.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported JSON encoding or charset.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Strict body/query/parameter validation failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sanitized unexpected failure.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or lifecycle unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254,
+                    "description": "Trimmed and lowercased across the whole address; provider-specific dot/plus rewriting is not performed."
+                  }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requestId"],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "message"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Known request schema path, for example body.count."
+          },
+          "message": {
+            "type": "string",
+            "description": "Safe validation guidance without rejected values."
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error", "meta"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "message", "details"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "VALIDATION_FAILED",
+                  "MALFORMED_JSON",
+                  "MALFORMED_URL",
+                  "INVALID_REQUEST",
+                  "BODY_TOO_LARGE",
+                  "UNSUPPORTED_MEDIA_TYPE",
+                  "CORS_ORIGIN_DENIED",
+                  "NOT_FOUND",
+                  "RATE_LIMITED",
+                  "SERVICE_UNAVAILABLE",
+                  "INTERNAL_ERROR",
+                  "UNAUTHENTICATED",
+                  "INVALID_CREDENTIALS",
+                  "EMAIL_VERIFICATION_REQUIRED",
+                  "CSRF_INVALID",
+                  "ACTION_TOKEN_INVALID"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "HealthData": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "service", "apiVersion", "phase", "timestamp"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "alive", "ready"]
+          },
+          "service": {
+            "type": "string",
+            "enum": ["flowwork-ai-api"]
+          },
+          "apiVersion": {
+            "type": "string",
+            "enum": ["v1"]
+          },
+          "phase": {
+            "type": "integer",
+            "enum": [3, 4]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ExampleItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "title"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["validation", "errors", "observability"]
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ExampleList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "items", "persisted"],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["development-only"]
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/ExampleItem"
+            }
+          },
+          "persisted": {
+            "type": "boolean",
+            "enum": [false]
+          }
+        }
+      },
+      "ExampleDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "item", "persisted"],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["development-only"]
+          },
+          "item": {
+            "$ref": "#/components/schemas/ExampleItem"
+          },
+          "persisted": {
+            "type": "boolean",
+            "enum": [false]
+          }
+        }
+      },
+      "ValidationBody": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "count"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Trimmed before validation; the trimmed value must contain 2-80 UTF-16 code units. Whitespace-only labels fail. The raw body is bounded by 16 KiB."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": ["general", "technical"],
+            "default": "general"
+          }
+        }
+      },
+      "ValidationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "validated", "characterCount", "persisted"],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["development-only"]
+          },
+          "validated": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "count", "category"],
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "category": {
+                "type": "string",
+                "enum": ["general", "technical"]
+              }
+            }
+          },
+          "characterCount": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 80,
+            "description": "Normalized label length in UTF-16 code units."
+          },
+          "persisted": {
+            "type": "boolean",
+            "enum": [false]
+          }
+        }
+      },
+      "SafeUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "description": "Trimmed and lowercased across the whole address; provider-specific dot/plus rewriting is not performed."
+          },
+          "avatarUrl": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "accountStatus": {
+            "type": "string",
+            "enum": ["active", "disabled", "deletion_pending"]
+          }
+        },
+        "required": ["id", "name", "email", "avatarUrl", "emailVerified", "accountStatus"]
+      },
+      "CsrfData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "csrfToken": {
+            "type": "string",
+            "description": "Signed nonce bound to the HttpOnly pre-session cookie or refresh family; not an access credential."
+          }
+        },
+        "required": ["csrfToken"]
+      },
+      "AuthResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/SafeUser"
+          },
+          "sessionExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": ["user", "sessionExpiresAt", "csrfToken"]
+      },
+      "AuthMessage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "deliveryMode": {
+            "type": "string",
+            "enum": ["development-capture", "email-provider"]
+          }
+        },
+        "required": ["message", "deliveryMode"]
+      },
+      "RegistrationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "deliveryMode": {
+            "type": "string",
+            "enum": ["development-capture", "email-provider"]
+          },
+          "verificationRequired": {
+            "type": "boolean",
+            "enum": [true]
+          }
+        },
+        "required": ["message", "deliveryMode", "verificationRequired"]
+      }
+    },
+    "securitySchemes": {
+      "accessCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fw_access",
+        "description": "Production HttpOnly Secure SameSite=Lax Path=/ host-only JWT cookie, 10-minute default. Development uses fw_access without Secure on loopback HTTP. Every request checks the active database user and session."
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fw_refresh",
+        "description": "Production HttpOnly Secure SameSite=Lax Path=/ host-only opaque rotating refresh cookie. Development uses fw_refresh. Default idle 7 days, absolute 30 days, history cap 512; replay revokes the family."
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Obtain from GET /auth/csrf; requires matching HttpOnly CSRF/context cookies and an exact allowlisted Origin. Token rotates on login/refresh; bootstrap before retrying a CSRF rejection."
+      }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "name": "flowwork-ai-backend",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^24.0.0 || ^26.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env dist/server.js --production",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:prepare": "npm run build && tsc -p tsconfig.test-server.json",
+    "test:server": "node .test-runtime/scripts/test-server.js",
+    "db:check": "node --env-file-if-exists=.env dist/commands/check-database.js",
+    "format": "prettier --write src tests scripts *.json *.ts *.js",
+    "format:check": "prettier --check src tests scripts *.json *.ts *.js"
+  },
+  "dependencies": {
+    "argon2": "0.45.2",
+    "cookie": "2.0.2",
+    "cors": "2.8.6",
+    "express": "5.3.0",
+    "express-rate-limit": "8.7.3",
+    "helmet": "8.3.0",
+    "jose": "6.2.17",
+    "mongoose": "9.12.1",
+    "nodemailer": "10.4.0",
+    "pino": "10.4.0",
+    "pino-http": "11.0.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
+    "@eslint/js": "10.0.1",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "@types/nodemailer": "8.0.2",
+    "@types/supertest": "7.2.1",
+    "eslint": "10.14.0",
+    "globals": "17.14.0",
+    "mongodb-memory-server": "11.3.0",
+    "prettier": "3.9.10",
+    "supertest": "7.3.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  }
+}

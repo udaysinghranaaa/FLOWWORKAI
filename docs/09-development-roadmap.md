@@ -1,8 +1,8 @@
 # 09 · Development roadmap
 
-**Current state: Phase 1 documentation complete. Phases 2–13 are planned and unimplemented.** Completion of this document is not approval to implement another phase. Each phase requires user instruction; changes to scope/stack update related documents and ADRs.
+**Current state: Phases 1–3 delivered; Phase 4 identity implementation has isolated verification with live Atlas acceptance blocked by connection-string parsing. Phase 5 has not started.** See [Phase 4 report](phase-4-final-report.md) for actual checks and remaining acceptance. Each phase still requires explicit user instruction; this status update does not authorize the next phase.
 
-Testing requirements below describe future gates, not tests already executed. File locations refer to the proposed structure in document 03; none of those application directories exist yet. Integration fixtures must model multiple tenants from the first persistence phase onward. Security is built into each phase; Phase 12 verifies accumulated controls rather than introducing tenant security at the end.
+The milestones below retain the original planning history; their test/file lists are targets rather than automatic claims of execution. Root frontend/backend now exist; use the phase-specific reports for their implemented scope. Phase 4 persists global identity only and creates no tenant records. Multi-tenant fixtures and authorization gates apply before Phase 5 business persistence. Security is built into each phase; Phase 12 verifies accumulated controls rather than introducing tenant security at the end.
 
 ## Phase 1 · Planning and Architecture — documentation complete
 
@@ -40,7 +40,7 @@ Testing requirements below describe future gates, not tests already executed. Fi
 - Completion criteria: reproducible start/build/typecheck, no secrets exposed, dependency failure readiness semantics documented.
 - Risks: overbuilding abstractions; background infrastructure must be justified and configured, not silently assumed.
 
-## Phase 4 · MongoDB and Authentication — planned
+## Phase 4 · MongoDB and Authentication — implemented locally; live acceptance blocked
 
 - Objectives: establish persistence, secure identity and revocable session families.
 - Prerequisites: replica-set test setup, Atlas non-production project, email provider choice and approved session policy.

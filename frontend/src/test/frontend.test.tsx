@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router'
@@ -14,6 +14,7 @@ import NotificationsPage from '@/features/dashboard/notifications-page'
 import AppShell from '@/components/layout/app-shell'
 import DashboardPage from '@/features/dashboard/dashboard-page'
 import TicketDetailPage from '@/features/tickets/ticket-detail'
+import { api, ApiClientError } from '@/services/api-client'
 
 function renderDemo(
   node: ReactNode,
@@ -51,18 +52,21 @@ describe('frontend interactions', () => {
     expect(screen.getByRole('heading', { name: /Good questions/ })).toBeInTheDocument()
     expect(screen.getAllByText(/no live services/i).length).toBeGreaterThan(0)
   })
-  it('validates login, reveals passwords, and never reports authentication success', async () => {
+  it('validates login, reveals passwords, and reports a real unavailable API safely', async () => {
+    vi.spyOn(api, 'login').mockRejectedValueOnce(
+      new ApiClientError(0, 'NETWORK_ERROR', 'Cannot reach the server.'),
+    )
     const user = userEvent.setup()
     renderDemo(<AuthPage mode="login" />, '/login')
-    await user.click(screen.getByRole('button', { name: 'Preview login' }))
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByText('Enter a valid email address.')).toBeVisible()
     expect(screen.getByText('Enter your password.')).toBeVisible()
     await user.type(screen.getByLabelText('Work email'), 'demo@example.com')
     await user.type(screen.getByLabelText('Password', { exact: true }), 'demo-password')
     await user.click(screen.getByRole('button', { name: 'Show password' }))
     expect(screen.getByLabelText('Password', { exact: true })).toHaveAttribute('type', 'text')
-    await user.click(screen.getByRole('button', { name: 'Preview login' }))
-    expect(await screen.findByRole('status')).toHaveTextContent('No authentication')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Cannot reach the server.')
     expect(screen.getByLabelText('Password', { exact: true })).toHaveValue('')
   })
   it('filters projects and creates a project with a validated dialog', async () => {

@@ -1,6 +1,8 @@
 # 05 · REST API contracts
 
-Status: planned `/api/v1` contract. No routes are implemented. IDs in examples are illustrative 24-character hex ObjectIds. Canonical policy is document 02; schemas and invariants are document 04.
+Status: historical Phase 1 target `/api/v1` contract. The Phase 3 foundation and Phase 4 identity implementation now exist; see [current OpenAPI](../backend/openapi.json) and [Phase 4 architecture](phase-4-database-auth-architecture.md) for operational routes. Later business tables below remain planned. IDs in examples are illustrative 24-character hex ObjectIds. Canonical future tenant policy is document 02; historical schemas/invariants are document 04.
+
+Phase 4 addendum: the explicit latest brief chooses JWT access cookies with live database session checks, `/auth/register` with `name`, and `/auth/me`. Historical `/auth/signup`, `displayName` and `/users/me` are not operational aliases. Generic registration/recovery responses, safe envelopes and pre-auth CSRF intent remain. [ADR 009](architecture-decisions/009-jwt-cookie-authentication.md) records the changes; live Atlas verification remains blocked as documented in the current report.
 
 ## Transport and common contracts
 

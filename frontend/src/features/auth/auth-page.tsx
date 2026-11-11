@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Eye, EyeOff, ArrowRight, ArrowUpRight, ShieldCheck, Sparkles } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,33 +9,39 @@ import { Brand } from '@/components/layout/app-shell'
 import { Button } from '@/components/ui/button'
 import { Field, Input } from '@/components/ui/fields'
 import { Badge } from '@/components/ui/display'
+import { api, ApiClientError } from '@/services/api-client'
+import { sessionKey } from './use-session'
+import { useActionToken } from './use-action-token'
 
 type Mode = 'login' | 'signup' | 'forgot' | 'reset'
 const content: Record<Mode, { title: string; subtitle: string; button: string }> = {
   login: {
     title: 'Welcome back.',
     subtitle: 'A little focus. A fresh start. Your workspace is waiting.',
-    button: 'Preview login',
+    button: 'Sign in',
   },
   signup: {
     title: 'Make room for good work.',
     subtitle: 'Explore a more connected way to work together.',
-    button: 'Preview signup',
+    button: 'Create account',
   },
   forgot: {
     title: 'Let’s find your way back.',
-    subtitle: 'Preview the password recovery flow.',
-    button: 'Preview recovery email',
+    subtitle: 'Request a one-time password reset link.',
+    button: 'Request reset link',
   },
   reset: {
     title: 'A fresh start.',
-    subtitle: 'Preview setting a new password. No real password will change.',
-    button: 'Preview password reset',
+    subtitle: 'Choose a new password using your one-time reset link.',
+    button: 'Reset password',
   },
 }
 export default function AuthPage({ mode }: { mode: Mode }) {
   const [visible, setVisible] = useState(false)
   const [notice, setNotice] = useState('')
+  const navigate = useNavigate(),
+    queryClient = useQueryClient(),
+    token = useActionToken()
   const hasPassword = mode !== 'forgot'
   const location = useLocation()
   const plan = new URLSearchParams(location.search).get('plan')
@@ -69,6 +76,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
     register,
     handleSubmit,
     resetField,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -100,12 +108,12 @@ export default function AuthPage({ mode }: { mode: Mode }) {
             </span>
           </div>
         </div>
-        <small>Frontend demonstration · Fictional workspace</small>
+        <small>Real account access · Demo workspace stays separate</small>
       </aside>
       <main className="auth-main" id="auth-main">
         <div className="auth-top">
           <Link to="/">← Back to website</Link>
-          <Badge>UI preview only</Badge>
+          <Badge>ACCOUNT ACCESS</Badge>
         </div>
         <div className="auth-form-wrap">
           <Brand />
@@ -117,13 +125,49 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           <form
             className="form-stack"
             noValidate
-            onSubmit={handleSubmit(async () => {
-              await Promise.resolve()
-              setNotice(
-                'Backend integration is unavailable. No authentication, account creation, email delivery, or password change occurred. Your password was not transmitted or saved.',
-              )
-              resetField('password')
-              resetField('confirmPassword')
+            onSubmit={handleSubmit(async (values) => {
+              setNotice('')
+              try {
+                if (mode === 'login') {
+                  const result = await api.login(values.email, values.password)
+                  queryClient.setQueryData(sessionKey, result.user)
+                  navigate('/account', { replace: true })
+                } else if (mode === 'signup') {
+                  const result = await api.register(values.name, values.email, values.password)
+                  setNotice(
+                    result.deliveryMode === 'development-capture'
+                      ? 'If eligible, your verification link is in local development mail capture. Verify your email before signing in. No email delivery is claimed.'
+                      : 'If eligible, check your email for a verification link before signing in.',
+                  )
+                } else if (mode === 'forgot') {
+                  const result = await api.forgot(values.email)
+                  setNotice(
+                    result.deliveryMode === 'development-capture'
+                      ? 'If eligible, reset instructions are in local development mail capture. No email delivery is claimed.'
+                      : 'If eligible, check your email for password reset instructions.',
+                  )
+                } else {
+                  if (!token) throw new Error('Open a valid reset link from your recovery message.')
+                  await api.reset(token, values.password)
+                  queryClient.setQueryData(sessionKey, null)
+                  setNotice(
+                    'Password updated. Existing sessions are signed out. You can now sign in.',
+                  )
+                }
+              } catch (error) {
+                setNotice(
+                  error instanceof Error ? error.message : 'The request could not be completed.',
+                )
+                if (error instanceof ApiClientError)
+                  for (const detail of error.details) {
+                    const field = detail.path.replace(/^body\./, '')
+                    if (field === 'name' || field === 'email' || field === 'password')
+                      setError(field, { message: detail.message })
+                  }
+              } finally {
+                resetField('password', { keepError: true })
+                resetField('confirmPassword', { keepError: true })
+              }
             })}
           >
             {mode === 'signup' && (
@@ -156,11 +200,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
                 id="auth-password"
                 label={mode === 'reset' ? 'New password' : 'Password'}
                 error={errors.password?.message}
-                hint={
-                  mode !== 'login'
-                    ? '12–128 characters. Use example credentials in this preview.'
-                    : undefined
-                }
+                hint={mode !== 'login' ? '12–128 characters. Use a unique password.' : undefined}
               >
                 <div className="password-input">
                   <Input
@@ -211,7 +251,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
               </Link>
             )}
             <Button type="submit" variant="primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Checking fields…' : content[mode].button}
+              {isSubmitting ? 'Please wait…' : content[mode].button}
               <ArrowRight size={16} />
             </Button>
             {notice && (
@@ -232,17 +272,17 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           <p className="auth-alternate">
             {mode === 'login' ? (
               <>
-                New here? <Link to="/signup">Preview signup</Link>
+                New here? <Link to="/signup">Create account</Link>
               </>
             ) : (
               <>
-                Already have an account? <Link to="/login">Back to login preview</Link>
+                Already have an account? <Link to="/login">Back to login</Link>
               </>
             )}
           </p>
           <p className="auth-security-note">
             <ShieldCheck size={15} />
-            No secure session is created. Do not enter real credentials.
+            Credentials go to the configured API. Sessions use HttpOnly cookies.
           </p>
           {mode === 'signup' && (
             <Link className="text-link" to="/verify-email">

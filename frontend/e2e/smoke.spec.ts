@@ -99,14 +99,31 @@ test('creates projects and tasks and updates the board in memory', async ({ page
   ).toBeVisible()
 })
 
-test('validates account UI and preserves no fake login state', async ({ page }) => {
+test('validates account UI and rejects invalid credentials without a fake login state', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/auth/csrf', (route) =>
+    route.fulfill({ json: { data: { csrfToken: 'controlled-ui-test' } } }),
+  )
+  await page.route('**/api/v1/auth/login', (route) =>
+    route.fulfill({
+      status: 401,
+      json: {
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Email or password is incorrect.',
+          details: [],
+        },
+      },
+    }),
+  )
   await page.goto('/login')
-  await page.getByRole('button', { name: 'Preview login' }).click()
+  await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Enter a valid email address.')).toBeVisible()
   await page.getByLabel('Work email').fill('demo@example.com')
   await page.getByLabel('Password', { exact: true }).fill('demo-only-credentials')
-  await page.getByRole('button', { name: 'Preview login' }).click()
-  await expect(page.getByRole('status')).toContainText('No authentication')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('status')).toContainText('Email or password is incorrect')
   await expect(page).toHaveURL(/\/login$/)
 })
 
