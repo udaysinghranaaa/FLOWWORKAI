@@ -8,7 +8,7 @@ export interface HealthData {
   status: 'ok' | 'alive' | 'ready'
   service: 'flowwork-ai-api'
   apiVersion: 'v1'
-  phase: 3 | 4 | 5 | 6
+  phase: 3 | 4 | 5 | 6 | 7
   timestamp: string
 }
 
@@ -16,7 +16,7 @@ export function createHealthService(
   lifecycle: LifecycleState,
   now: () => Date = () => new Date(),
   dependenciesReady: () => boolean = () => true,
-  phase: 3 | 4 | 5 | 6 = 3,
+  phase: 3 | 4 | 5 | 6 | 7 = 3,
 ) {
   function report(status: HealthData['status']): HealthData {
     return {

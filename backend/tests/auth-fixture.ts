@@ -1,5 +1,7 @@
 import { createWorkModels, ensureWorkIndexes } from '../src/modules/work-management/work.models.js'
 import { createWorkService } from '../src/modules/work-management/work.service.js'
+import { createClientModels, ensureClientIndexes } from '../src/modules/clients/client.models.js'
+import { createClientService } from '../src/modules/clients/client.service.js'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import request from 'supertest'
@@ -20,7 +22,10 @@ import { assertSafeTestDatabase } from './test-database-safety.js'
 export { assertSafeTestDatabase } from './test-database-safety.js'
 
 /** Never reads process.env.MONGODB_URI or .env; only generated loopback replica sets. */
-export async function createAuthFixture(options: { tenants?: boolean; work?: boolean } = {}) {
+export async function createAuthFixture(
+  options: { tenants?: boolean; work?: boolean; clients?: boolean } = {},
+) {
+  if (options.clients) options = { ...options, work: true }
   const name = `flowwork_test_${randomUUID().replaceAll('-', '')}`
   const repl = await MongoMemoryReplSet.create({
     replSet: { count: 1 },
@@ -83,6 +88,26 @@ export async function createAuthFixture(options: { tenants?: boolean; work?: boo
           now,
         })
       : undefined
+  const clientModels = options.clients ? createClientModels(database.connection) : undefined
+  if (clientModels) await ensureClientIndexes(clientModels)
+  const clients = clientModels
+    ? createClientService({
+        models: clientModels,
+        tenants: tenants!,
+        tenantModels: tenantModels!,
+        work: work!,
+        workModels: workModels!,
+        authModels: models,
+        mail: {
+          send: async (message) => {
+            messages.push(message)
+          },
+        },
+        logger: logging.logger,
+        webOrigin: 'http://localhost:5173',
+        now,
+      })
+    : undefined
   function app(max = 1000) {
     return createApp({
       config,
@@ -95,6 +120,7 @@ export async function createAuthFixture(options: { tenants?: boolean; work?: boo
         rateLimitMax: max,
         ...(tenants ? { tenants } : {}),
         ...(work ? { work } : {}),
+        ...(clients ? { clients } : {}),
       },
     })
   }
@@ -111,6 +137,8 @@ export async function createAuthFixture(options: { tenants?: boolean; work?: boo
     tenants,
     workModels,
     work,
+    clients,
+    clientModels,
     unavailable: (value: boolean) => {
       available = !value
     },
@@ -125,10 +153,13 @@ export async function createAuthFixture(options: { tenants?: boolean; work?: boo
     reset: async () => {
       await service.drainMail()
       await tenants?.drainMail()
+      await clients?.drainMail()
       assertSafeTestDatabase(uri, config.nodeEnv, database.connection.name)
       if (database.connection.host !== '127.0.0.1') throw new Error('Refusing non-loopback cleanup')
       if (workModels)
         for (const model of Object.values(workModels)) await model.collection.deleteMany({})
+      if (clientModels)
+        for (const model of Object.values(clientModels)) await model.collection.deleteMany({})
       await Promise.all([
         ...(tenantModels
           ? [
@@ -150,6 +181,7 @@ export async function createAuthFixture(options: { tenants?: boolean; work?: boo
       logging.lines.length = 0
     },
     close: async () => {
+      await clients?.drainMail()
       await service.drainMail()
       await tenants?.drainMail()
       await database.close()

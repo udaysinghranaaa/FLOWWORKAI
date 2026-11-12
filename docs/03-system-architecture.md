@@ -200,3 +200,7 @@ The implemented shared-database tenant parent is Organization, containing Worksp
 The new Phase 6 brief authorizes projects/tasks and stops before Phase 7. Real projects and tasks live below `/app/w/:workspaceId/projects`, with workspace `/tasks` and `/my-tasks` routes and real overview aggregates. The public `/w` demo remains independent. See [Phase 6 architecture](phase-6-architecture.md), [API inventory](phase-6-api-inventory.md), [ADR 011](architecture-decisions/011-project-grants-and-task-ordering.md) and [final report](phase-6-final-report.md).
 
 No new dependency was introduced. Current database identity/membership checks, CSRF, optional DNS and cookie/session behavior remain in use. Credential rotation and Phase 5 live schema/onboarding remain pending; Phase 6 live schema requires separate approval. `npm.cmd run schema:work` in backend prints a static read-only plan without connecting. Do not run apply flags until approval and environment checks are complete.
+
+## Phase 7 client collaboration extension
+
+The existing modular monolith now hosts a client service and separate internal/portal routes. Seven client-scoped collections reuse organization/workspace ownership and guarded transactions; explicit DTOs replace internal project serialization on external APIs. The existing identity/mail/CSRF/refresh and query providers are reused. See [Phase 7 architecture](phase-7-architecture.md) and [ADR 012](architecture-decisions/012-client-portal-boundary.md). Live schema readiness remains independently gated.

@@ -82,3 +82,17 @@ The latest brief introduces Organization above Workspace. The executable organiz
 ## Phase 6 project capability policy
 
 The [ADR 011 policy](architecture-decisions/011-project-grants-and-task-ordering.md) extends current workspace roles with scoped MANAGER/CONTRIBUTOR/VIEWER project grants. OWNER/ADMIN administer their workspaces' projects; workspace MANAGER requires a manager grant or project ownership to administer a project. MEMBER requires a contributor grant to mutate tasks. VIEWER is read-only even if an old grant is stronger. Every operation still requires current active company/workspace membership and identity. Project ownership can transfer to an eligible administrator; the immutable founding organization/workspace ownership policy is unchanged. See the [Phase 6 report](phase-6-final-report.md) for the matrix and tests.
+
+## Phase 7 implemented client policy
+
+| Operation | Internal workspace OWNER/ADMIN | Current project manager | CLIENT_ADMIN | CLIENT_MEMBER | CLIENT_VIEWER |
+|---|---|---|---|---|---|
+| Client CRM, contacts and invitations | Yes | No | No | No | No |
+| Share/revoke project and visibility policy | Yes, plus project manage | No | No | No | No |
+| Publish/review project collaboration | Yes, plus project manage | Own managed project only | No | No | No |
+| Read published shared resources | Internal scoped route | Managed project only | Active grant and policy | Active grant and policy | Active grant and policy |
+| Submit feedback/change request/reply | Scoped internal workflow | Managed project only | Explicit grant | Explicit grant | No |
+| Decide deliverable | No impersonation | No impersonation | Approval grant required | Approval grant required | No |
+| Change existing representatives | Yes | No | Only when agency enables; no admin/self/escalation | No | No |
+
+Portal roles never imply employee membership. Revocation/archival checks run for every API request and every transactional write. See ADR 012 and the Phase 7 architecture for full boundaries.

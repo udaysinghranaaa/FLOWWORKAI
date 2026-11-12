@@ -4,7 +4,7 @@
 
 FlowWork AI is an agency work management product in development. The executable Phase 2 React frontend demonstrates project delivery, tasks, client collaboration, support conversations, analytics and the planned AI experience using fictional data.
 
-**Current scope: Phase 6 real projects, tasks, persistent Kanban, project grants, assignments, subtasks, comments, activity, My Tasks and workspace metrics, alongside preserved Phases 1-5 and the separate public demo. See [Phase 6 report](docs/phase-6-final-report.md) for actual verification. Private credential rotation, Phase 5 live tenant readiness and separately approved Phase 6 schema rollout remain pending. Phase 7 has not started.**
+**Current scope: Phase 7 client management and secure portal, alongside preserved Phases 1-6 and the independent public demo. See the Phase 7 report for actual verification and remaining live rollout gates.**
 
 ## Run locally on Windows
 
@@ -96,7 +96,7 @@ Small agencies often coordinate projects, client requests, documents and status 
 
 ## Product modules and remaining scope
 
-Real identity/sessions and company/workspace membership administration are implemented locally through Phase 5; live rollout awaits credential rotation and schema initialization. Phase 6 adds locally verified projects/grants, tasks/Kanban and comments. Remaining production modules: clients/contacts; files; milestones/client portal; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
+Real identity/sessions and company/workspace membership administration are implemented locally through Phase 5; live rollout awaits credential rotation and schema initialization. Phase 6 adds locally verified projects/grants, tasks/Kanban and comments. Phase 7 adds client CRM, portal memberships, explicit sharing, milestones, feedback and approvals. Remaining production modules: managed file storage; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
 
 Launch AI is internal and read-only. Teams initially mean workspace/project membership. CRM automation, payroll, full accounting, live document editing, SSO and autonomous AI actions are outside the launch scope.
 
@@ -122,7 +122,7 @@ The implemented frontend is organized into feature pages, shared components, typ
 
 The implemented backend exports an isolated application factory and a separate compiled listener entrypoint. Global HTTP policy precedes the versioned registry; routes validate input, controllers map transport, auth and tenant services perform guarded MongoDB transactions, and one error handler normalizes failures. React identity flows call real auth APIs, while demo business pages still use the unchanged in-memory repository. Required database readiness gates real startup/traffic; cleanup hooks close actual connections and drain pending mail.
 
-The planned production system remains a modular monolith with domain-owned services and repositories. A React browser will communicate with one Express API/socket boundary; a worker from the same backend will process durable side effects and AI ingestion. Implemented tenant records use organizationId/workspaceId with current database membership checks. Future client/project rules, worker/outbox and sockets remain plans, not frontend guarantees.
+The planned production system remains a modular monolith with domain-owned services and repositories. A React browser will communicate with one Express API/socket boundary; a worker from the same backend will process durable side effects and AI ingestion. Implemented tenant records use organizationId/workspaceId with current database membership checks. Client/project rules are implemented through Phase 7; worker/outbox and sockets remain plans.
 
 This trades physical tenant isolation and independent domain deployment for simpler transactions and lower early operational burden. Tests, explicit query scope and careful serializers are essential. No microservices or Kubernetes are planned for MVP.
 
@@ -136,7 +136,7 @@ This trades physical tenant isolation and independent domain deployment for simp
 | 4 | MongoDB and Authentication | Preserved; current live rollout gates are in the Phase 5 report |
 | 5 | Companies, Workspaces, Teams and Multi-Tenancy | Implemented and isolated-tested; live schema/acceptance pending rotation |
 | 6 | Projects and Task Management | Implemented locally; see Phase 6 report for checks and live blockers |
-| 7 | Client Portal | Planned |
+| 7 | Client Portal | Implemented locally; live rollout remains gated |
 | 8 | Support Ticket Management | Planned |
 | 9 | Real-Time Collaboration | Planned |
 | 10 | AI Assistant and RAG | Planned |
@@ -188,3 +188,9 @@ Read [tenant architecture](docs/phase-5-multi-tenant-architecture.md), [intervie
 ## Phase 6 real projects and tasks
 
 Open an authorized workspace and choose Projects, Tasks or My Tasks. Projects have scoped grants, tasks have real assignment, comments/subtasks/history, and the board persists moves and ordering. Overview counts come from scoped database aggregation. Public demo pages stay separate. Read [the architecture](docs/phase-6-architecture.md), [API inventory](docs/phase-6-api-inventory.md) and [final report](docs/phase-6-final-report.md). In backend, `npm.cmd run schema:work` prints a read-only plan. Applying schema requires private rotation, Phase 5 readiness and separate intended-environment approval; the agent has not run apply.
+
+## Phase 7 client collaboration
+
+Real client CRM is available under `/app/w/:workspaceId/clients` for workspace administrators. The separate authenticated portal starts at `/portal`; invitations open `/portal/invitations` using private fragment links from the existing mail adapter. Project sharing, published progress/milestones, feedback threads, reviewed change requests and versioned deliverable decisions use MongoDB. Portal membership never creates employee access. Public `/w/.../clients` and demo portal routes remain fictional.
+
+Read [Phase 7 architecture](docs/phase-7-architecture.md), [API inventory](docs/phase-7-api-inventory.md), [ADR 012](docs/architecture-decisions/012-client-portal-boundary.md) and [final report](docs/phase-7-final-report.md). `npm.cmd run schema:clients` in backend prints a static plan with no database connection. Live apply requires private rotation, Phase 5/6 readiness and separate explicit approval for the intended environment. No Atlas schema or business writes have been performed for Phase 7. Stop before Phase 8.

@@ -41,6 +41,9 @@ export default function AccountPage() {
         <p>{user.email}</p>
         <p className="muted">Email verified · {user.accountStatus} account</p>
         <h2>Your company, connected.</h2>
+        <Button asChild>
+          <Link to="/portal">Your client portals</Link>
+        </Button>
         {workspaces.isPending ? (
           <p role="status">Loading your workspaces…</p>
         ) : workspaces.isError ? (

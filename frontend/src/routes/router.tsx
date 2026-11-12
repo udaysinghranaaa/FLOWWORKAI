@@ -15,6 +15,29 @@ const Onboarding = lazy(() => import('@/features/auth/onboarding-page'))
 const Verification = lazy(() => import('@/features/auth/verification-page'))
 const ProtectedRoute = lazy(() => import('@/features/auth/protected-route'))
 const RealProjects = lazy(() => import('@/features/work-management/work-pages'))
+const RealClients = lazy(() => import('@/features/client-management/client-pages'))
+const RealClientDetail = lazy(() =>
+  import('@/features/client-management/client-pages').then((m) => ({ default: m.ClientDetail })),
+)
+const RealPortalShell = lazy(() =>
+  import('@/features/client-management/portal-pages').then((m) => ({ default: m.PortalShell })),
+)
+const RealPortalHome = lazy(() =>
+  import('@/features/client-management/portal-pages').then((m) => ({ default: m.PortalHome })),
+)
+const RealPortalOverview = lazy(() =>
+  import('@/features/client-management/portal-pages').then((m) => ({ default: m.PortalOverview })),
+)
+const RealPortalProject = lazy(() =>
+  import('@/features/client-management/portal-pages').then((m) => ({
+    default: m.PortalProjectPage,
+  })),
+)
+const PortalInvitation = lazy(() =>
+  import('@/features/client-management/portal-pages').then((m) => ({
+    default: m.PortalInvitation,
+  })),
+)
 const RealProjectDetail = lazy(() =>
   import('@/features/work-management/work-pages').then((m) => ({ default: m.RealProjectDetail })),
 )
@@ -86,10 +109,20 @@ export const router = createBrowserRouter([
       { path: '/onboarding', element: <Onboarding /> },
       { path: paths.workspaces, element: <Workspaces /> },
       { path: '/app/invitations', element: <InvitationPage /> },
+      { path: '/portal/invitations', element: <PortalInvitation /> },
       {
         element: <ProtectedRoute />,
         children: [
           { path: '/account', element: <Account /> },
+          {
+            path: '/portal',
+            element: <RealPortalShell />,
+            children: [
+              { index: true, element: <RealPortalHome /> },
+              { path: ':clientId', element: <RealPortalOverview /> },
+              { path: ':clientId/projects/:projectId', element: <RealPortalProject /> },
+            ],
+          },
           { path: '/app', element: <WorkspaceList /> },
           { path: '/app/workspaces', element: <WorkspaceList /> },
           { path: '/app/onboarding', element: <CompanyOnboarding /> },
@@ -102,6 +135,9 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="overview" replace /> },
               { path: 'overview', element: <WorkspaceOverview /> },
               { path: 'projects', element: <RealProjects /> },
+              { path: 'clients', element: <RealClients /> },
+              { path: 'clients/:clientId', element: <RealClientDetail /> },
+              { path: 'clients/:clientId/projects/:projectId', element: <RealClientDetail /> },
               { path: 'projects/:projectId', element: <RealProjectDetail /> },
               { path: 'projects/:projectId/tasks/:taskId', element: <RealTaskDetail /> },
               { path: 'tasks', element: <RealTasks /> },

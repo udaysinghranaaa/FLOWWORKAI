@@ -1199,6 +1199,7 @@ export function createWorkService({
   }
   return {
     projects,
+    access,
     createProject,
     project,
     updateProject,

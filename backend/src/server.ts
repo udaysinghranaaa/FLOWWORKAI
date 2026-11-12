@@ -1,5 +1,11 @@
 import { assertIsolatedSchemaTarget } from './lib/test-schema-target.js'
 import {
+  createClientModels,
+  ensureClientIndexes,
+  clientIndexesReady,
+} from './modules/clients/client.models.js'
+import { createClientService } from './modules/clients/client.service.js'
+import {
   createWorkModels,
   ensureWorkIndexes,
   workIndexesReady,
@@ -75,11 +81,33 @@ async function main(): Promise<void> {
       mail,
       logger,
     })
+    const clientModels = createClientModels(database.connection)
+    if (config.nodeEnv === 'test') await ensureClientIndexes(clientModels)
+    else if (!(await clientIndexesReady(clientModels))) {
+      logger.error(
+        { code: 'CLIENT_SCHEMA_NOT_READY' },
+        'Phase 7 schema requires separately approved initialization.',
+      )
+      throw new Error('Client schema is not initialized.')
+    }
+    const clients = createClientService({
+      models: clientModels,
+      tenants,
+      tenantModels,
+      work,
+      workModels,
+      authModels: models,
+      mail,
+      logger,
+      webOrigin: authConfig.webOrigin,
+    })
     const app = createApp({
       config,
       logger,
       lifecycle,
-      auth: { service, config: authConfig, isReady: database.isReady, tenants, work },
+      // The loopback/generated-database guard above is mandatory before this test-only budget.
+      ...(config.nodeEnv === 'test' ? { rateLimit: { limit: 2000 } } : {}),
+      auth: { service, config: authConfig, isReady: database.isReady, tenants, work, clients },
     })
     const running = await startHttpServer({
       app,
@@ -90,6 +118,7 @@ async function main(): Promise<void> {
         async () => {
           await service.drainMail()
           await tenants.drainMail()
+          await clients.drainMail()
           mail.close?.()
         },
         database.close,

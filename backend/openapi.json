@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "FlowWork AI - Multi-tenant projects and tasks",
-    "version": "0.6.0",
-    "description": "Implemented Phases 3-5: infrastructure, database authentication, organizations, workspaces, memberships and invitations. Database authorization runs per request; invitations require matching verified email. No projects/tasks, AI or billing persistence. Phase 6 implements scoped projects, project grants, tasks, subtasks, comments, activity, persistent ordering and dashboard aggregates. Live schema rollout requires separate approval."
+    "title": "FlowWork AI - Client collaboration and secure portal",
+    "version": "0.7.0",
+    "description": "Implemented Phases 3-7. Current database identity and scoped authorization on every request. Separate client memberships, explicit grants, allowlisted portal DTOs, publication, feedback, change review and versioned approvals. Live schema rollout requires separate approval."
   },
   "servers": [
     {
@@ -36,6 +36,9 @@
     {
       "name": "Work management",
       "description": "Current database workspace membership and project permissions required. All writes are transactional and recorded with server-owned activity."
+    },
+    {
+      "name": "Client collaboration"
     }
   ],
   "paths": {
@@ -9071,6 +9074,4593 @@
           }
         }
       }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "legalName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "type": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "industry": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 3000
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 254
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "country": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "address": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["lead", "active", "on_hold", "inactive", "archived"]
+                  },
+                  "tags": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "allowRepresentatives": {
+                    "type": "boolean"
+                  },
+                  "creationKey": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": ["name", "creationKey"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_workspaces_workspaceId_clients_clientId_",
+        "summary": "PATCH /api/v1/workspaces/{workspaceId}/clients/{clientId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "legalName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "type": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "industry": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 3000
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 254
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "country": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "address": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["lead", "active", "on_hold", "inactive", "archived"]
+                  },
+                  "tags": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "allowRepresentatives": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/contacts": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_contacts",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/contacts",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_contacts",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/contacts",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "role": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "primary": {
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["name", "email"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/contacts/{contactId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_workspaces_workspaceId_clients_clientId_contacts_contactId_",
+        "summary": "PATCH /api/v1/workspaces/{workspaceId}/clients/{clientId}/contacts/{contactId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "contactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  "role": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "primary": {
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_invitations",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_invitations",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "contactId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["CLIENT_ADMIN", "CLIENT_MEMBER", "CLIENT_VIEWER"]
+                  },
+                  "expiresInHours": {
+                    "default": 72,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 168
+                  }
+                },
+                "required": ["contactId", "role"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations/{invitationId}/resend": {
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_invitations_invitationId_resend",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations/{invitationId}/resend",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations/{invitationId}/revoke": {
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_invitations_invitationId_revoke",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/invitations/{invitationId}/revoke",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/members": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_members",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/members",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/members/{membershipId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_workspaces_workspaceId_clients_clientId_members_membershipId_",
+        "summary": "PATCH /api/v1/workspaces/{workspaceId}/clients/{clientId}/members/{membershipId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["CLIENT_ADMIN", "CLIENT_MEMBER", "CLIENT_VIEWER"]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "revoked"]
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/projects": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_projects",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_projects",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 3000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "revoked"]
+                  },
+                  "progress": {
+                    "type": "boolean"
+                  },
+                  "milestones": {
+                    "type": "boolean"
+                  },
+                  "deliverables": {
+                    "type": "boolean"
+                  },
+                  "feedback": {
+                    "type": "boolean"
+                  },
+                  "changes": {
+                    "type": "boolean"
+                  },
+                  "approve": {
+                    "type": "boolean"
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  }
+                },
+                "required": ["title", "projectId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_",
+        "summary": "PATCH /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 3000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "revoked"]
+                  },
+                  "progress": {
+                    "type": "boolean"
+                  },
+                  "milestones": {
+                    "type": "boolean"
+                  },
+                  "deliverables": {
+                    "type": "boolean"
+                  },
+                  "feedback": {
+                    "type": "boolean"
+                  },
+                  "changes": {
+                    "type": "boolean"
+                  },
+                  "approve": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/activity": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_activity",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/activity",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/invitations/preview": {
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_portal_invitations_preview",
+        "summary": "POST /api/v1/portal/invitations/preview",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$"
+                  }
+                },
+                "required": ["token"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/invitations/accept": {
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_portal_invitations_accept",
+        "summary": "POST /api/v1/portal/invitations/accept",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$"
+                  }
+                },
+                "required": ["token"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients",
+        "summary": "GET /api/v1/portal/clients",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_",
+        "summary": "GET /api/v1/portal/clients/{clientId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/projects": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_projects",
+        "summary": "GET /api/v1/portal/clients/{clientId}/projects",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/projects/{projectId}": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_projects_projectId_",
+        "summary": "GET /api/v1/portal/clients/{clientId}/projects/{projectId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["client", "project", "role"],
+                      "properties": {
+                        "client": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["id", "name"]
+                        },
+                        "project": {
+                          "$ref": "#/components/schemas/ClientSafeProject"
+                        },
+                        "role": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/members": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_members",
+        "summary": "GET /api/v1/portal/clients/{clientId}/members",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/members/{membershipId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_portal_clients_clientId_members_membershipId_",
+        "summary": "PATCH /api/v1/portal/clients/{clientId}/members/{membershipId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["CLIENT_ADMIN", "CLIENT_MEMBER", "CLIENT_VIEWER"]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "revoked"]
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_resources",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_resources",
+        "summary": "POST /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "published": {
+                    "type": "boolean"
+                  },
+                  "progress": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    ]
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "size": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+                  },
+                  "creationKey": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "parentId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  },
+                  "previousId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  }
+                },
+                "required": ["title", "kind", "creationKey"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources/{resourceId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_resources_resourceId_",
+        "summary": "PATCH /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources/{resourceId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "published": {
+                    "type": "boolean"
+                  },
+                  "progress": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    ]
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "size": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "decisionNote": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "taskId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_workspaces_workspaceId_clients_clientId_projects_projectId_resources_resourceId_",
+        "summary": "GET /api/v1/workspaces/{workspaceId}/clients/{clientId}/projects/{projectId}/resources/{resourceId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/projects/{projectId}/resources": {
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_projects_projectId_resources",
+        "summary": "GET /api/v1/portal/clients/{clientId}/projects/{projectId}/resources",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "oldest",
+              "type": "string",
+              "enum": ["oldest", "newest", "position"]
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": ["items", "hasMore", "nextCursor"],
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ClientSafeResource"
+                          }
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        },
+                        "nextCursor": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      },
+      "post": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_post__api_v1_portal_clients_clientId_projects_projectId_resources",
+        "summary": "POST /api/v1/portal/clients/{clientId}/projects/{projectId}/resources",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "published": {
+                    "type": "boolean"
+                  },
+                  "progress": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    ]
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "size": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+                  },
+                  "creationKey": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "parentId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  },
+                  "previousId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  }
+                },
+                "required": ["title", "kind", "creationKey"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portal/clients/{clientId}/projects/{projectId}/resources/{resourceId}": {
+      "patch": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_patch__api_v1_portal_clients_clientId_projects_projectId_resources_resourceId_",
+        "summary": "PATCH /api/v1/portal/clients/{clientId}/projects/{projectId}/resources/{resourceId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ClientSafeResource"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "body": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "published": {
+                    "type": "boolean"
+                  },
+                  "progress": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    ]
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "urgent"]
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [""]
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      }
+                    ]
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "size": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "decisionNote": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "taskId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{24}$"
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Client collaboration"],
+        "operationId": "client_get__api_v1_portal_clients_clientId_projects_projectId_resources_resourceId_",
+        "summary": "GET /api/v1/portal/clients/{clientId}/projects/{projectId}/resources/{resourceId}",
+        "description": "Rechecks current tenant/client/project permissions. Lists default to 20 and cap at 50. Project publication requires Phase 6 manage permission. Portal responses expose allowlisted published resources only.",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result in the existing data/meta envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "meta"],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ClientSafeResource"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["requestId"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Current verified identity required."
+          },
+          "403": {
+            "description": "CSRF or scoped permission denied."
+          },
+          "404": {
+            "description": "Resource unavailable in the authorized scope."
+          },
+          "409": {
+            "description": "Stale version, duplicate key or invalid transition."
+          },
+          "410": {
+            "description": "Invitation expired, consumed or revoked."
+          },
+          "422": {
+            "description": "Strict request validation failed."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10945,6 +15535,168 @@
           }
         },
         "required": ["totalProjects", "activeProjects", "tasks", "upcoming", "recentProjects"]
+      },
+      "ClientSafeProject": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "projectId",
+          "title",
+          "description",
+          "status",
+          "progress",
+          "milestones",
+          "deliverables",
+          "feedback",
+          "changes",
+          "approve"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "revoked"]
+          },
+          "progress": {
+            "type": "boolean"
+          },
+          "milestones": {
+            "type": "boolean"
+          },
+          "deliverables": {
+            "type": "boolean"
+          },
+          "feedback": {
+            "type": "boolean"
+          },
+          "changes": {
+            "type": "boolean"
+          },
+          "approve": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ClientSafeResource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "kind",
+          "title",
+          "body",
+          "status",
+          "published",
+          "progress",
+          "dueDate",
+          "position",
+          "priority",
+          "parentId",
+          "url",
+          "fileName",
+          "contentType",
+          "size",
+          "revision",
+          "previousId",
+          "decisionAt",
+          "decisionNote",
+          "publishedAt",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["progress", "milestone", "feedback", "reply", "change", "deliverable"]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "progress": {
+            "type": "number"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "nullable": true
+          },
+          "revision": {
+            "type": "number"
+          },
+          "previousId": {
+            "type": "string",
+            "nullable": true
+          },
+          "decisionAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "canEdit": {
+            "type": "boolean"
+          }
+        }
       }
     },
     "securitySchemes": {

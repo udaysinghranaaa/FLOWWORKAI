@@ -691,3 +691,261 @@ test('Phase 6 pointer ordering, keyboard alternatives, themes and accessibility 
   await page.goto(`/app/w/${ws}/projects/${projectId}`)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('Phase 7 CRM, portal invitations, publishing, feedback, change review, approvals and revocation', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180000)
+  page.setDefaultTimeout(15000)
+  await authenticated(page)
+  const ws = await createCompany(page, 'Client Delivery Agency', 'client-delivery-agency')
+  const pid = await realProject(page, ws, 'Private implementation plan', 'private-implementation')
+  await realTask(page, 'Internal delivery work')
+  await page.goto(`/app/w/${ws}/clients`)
+  await page.getByRole('button', { name: 'Add client', exact: true }).click()
+  await page.getByLabel('Client name', { exact: true }).fill('Retail Partnership')
+  await page.getByRole('button', { name: 'Create client', exact: true }).click()
+  await page.getByRole('link', { name: 'Retail Partnership', exact: true }).click()
+  const clientId = page.url().split('/').at(-1)!,
+    internal = `/workspaces/${ws}/clients/${clientId}`
+  await page.getByRole('button', { name: 'Contacts', exact: true }).click()
+  const recipient = email()
+  await page.getByLabel('Full name', { exact: true }).fill('Retail Representative')
+  await page.getByLabel('Contact email', { exact: true }).fill(recipient)
+  await page.getByRole('button', { name: 'Create contact', exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Retail Representative', exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Invite to portal', exact: true }).click()
+  const inviteLink = await capturedLink(recipient, 'invitation')
+  await page.getByRole('button', { name: 'Projects', exact: true }).click()
+  await page.getByRole('button', { name: 'Private implementation plan', exact: true }).click()
+  await page
+    .getByLabel('Client-facing project title', { exact: true })
+    .fill('Retail website delivery')
+  await page
+    .getByLabel('Approved public description', { exact: true })
+    .fill('A curated view for our retail team.')
+  for (const permission of [
+    'progress',
+    'milestones',
+    'deliverables',
+    'feedback',
+    'changes',
+    'approve',
+  ])
+    await page.getByLabel('Allow ' + permission, { exact: true }).check()
+  await page.getByRole('button', { name: 'Share project', exact: true }).click()
+  await page.getByRole('link', { name: 'Retail website delivery', exact: true }).click()
+  await page.getByRole('button', { name: 'Create progress', exact: true }).click()
+  await page.getByLabel('Title', { exact: true }).fill('Design completed')
+  await page.getByLabel('Message', { exact: true }).fill('The approved design is ready to review.')
+  await page.getByLabel('Approved progress (%)', { exact: true }).fill('35')
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Design completed', exact: true })).toBeVisible()
+  const context = await browser.newContext(),
+    clientPage = await context.newPage()
+  try {
+    await signup(clientPage, recipient)
+    await verify(clientPage, recipient)
+    await login(clientPage, recipient)
+    await clientPage.goto(inviteLink)
+    await clientPage.getByRole('button', { name: 'Accept client invitation', exact: true }).click()
+    await expect(
+      clientPage.getByRole('heading', { name: 'Retail Partnership', exact: true }),
+    ).toBeVisible()
+    await clientPage.getByRole('link', { name: 'Retail website delivery', exact: true }).click()
+    await expect(
+      clientPage.getByRole('heading', { name: 'Retail website delivery', exact: true }),
+    ).toBeVisible()
+    await expect(clientPage.getByText('Design completed', { exact: true })).toHaveCount(0)
+    await expect(clientPage.getByText('Private implementation plan', { exact: true })).toHaveCount(
+      0,
+    )
+    await page
+      .getByLabel('Next status for Design completed', { exact: true })
+      .selectOption('published')
+    await page.getByRole('button', { name: 'Update status', exact: true }).click()
+    await clientPage.reload()
+    await expect(
+      clientPage.getByRole('heading', { name: 'Design completed', exact: true }),
+    ).toBeVisible()
+    await expect(clientPage.getByText('35% published progress', { exact: true })).toBeVisible()
+    await clientPage.getByRole('button', { name: 'Feedback', exact: true }).click()
+    await clientPage.getByRole('button', { name: 'Submit feedback', exact: true }).click()
+    await clientPage.getByLabel('Title', { exact: true }).fill('Refine header spacing')
+    await clientPage
+      .getByLabel('Message', { exact: true })
+      .fill('Please increase spacing above the navigation.')
+    await clientPage.getByRole('button', { name: 'Send feedback', exact: true }).click()
+    await expect(
+      clientPage.getByRole('heading', { name: 'Refine header spacing', exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Feedback', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Feedback', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Open feedback thread', exact: true }).click()
+    await page.getByLabel('Reply subject', { exact: true }).fill('Agency response')
+    await page.getByLabel('Reply', { exact: true }).fill('We will refine this in the next version.')
+    await page.getByRole('button', { name: 'Send reply', exact: true }).click()
+    await clientPage.getByRole('button', { name: 'Open feedback thread', exact: true }).click()
+    await expect(
+      clientPage.getByText('We will refine this in the next version.', { exact: true }),
+    ).toBeVisible()
+    await clientPage.getByRole('button', { name: 'Change requests', exact: true }).click()
+    await clientPage.getByRole('button', { name: 'New change request', exact: true }).click()
+    await clientPage.getByLabel('Title', { exact: true }).fill('Add a second payment option')
+    await clientPage
+      .getByLabel('Message', { exact: true })
+      .fill('Please evaluate the additional payment option.')
+    await clientPage.getByRole('button', { name: 'Submit request', exact: true }).click()
+    await expect(
+      clientPage.getByRole('heading', { name: 'Add a second payment option', exact: true }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Change requests', exact: true }).click()
+    await page
+      .getByLabel('Next status for Add a second payment option', { exact: true })
+      .selectOption('under_review')
+    await page.getByRole('button', { name: 'Update status', exact: true }).click()
+    await expect(
+      page.getByLabel('Next status for Add a second payment option', { exact: true }),
+    ).toHaveValue('approved')
+    await page
+      .getByLabel('Client-facing review note', { exact: true })
+      .fill('Approved for the next milestone.')
+    await page.getByRole('button', { name: 'Update status', exact: true }).click()
+    await page.getByText('Link an existing internal task', { exact: true }).click()
+    await page.getByRole('button', { name: 'Link Internal delivery work', exact: true }).click()
+    await expect(page.getByRole('link', { name: 'Open linked task', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Deliverables', exact: true }).click()
+    await page.getByRole('button', { name: 'Create deliverable', exact: true }).click()
+    await page.getByLabel('Title', { exact: true }).fill('Homepage design preview')
+    await page
+      .getByLabel('HTTPS reference URL', { exact: true })
+      .fill('https://example.com/approved-preview')
+    await page.getByLabel('Display file name', { exact: true }).fill('Homepage preview')
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click()
+    await page
+      .getByLabel('Next status for Homepage design preview', { exact: true })
+      .selectOption('shared')
+    await page.getByRole('button', { name: 'Update status', exact: true }).click()
+    await clientPage.getByRole('button', { name: 'Deliverables', exact: true }).click()
+    await clientPage
+      .getByLabel('Review decision for Homepage design preview', { exact: true })
+      .selectOption('approved')
+    await clientPage.getByLabel('Review note', { exact: true }).fill('Approved by the retail team.')
+    await clientPage.getByRole('button', { name: 'Submit decision', exact: true }).click()
+    await expect(clientPage.getByText(/Approved by the retail team/)).toBeVisible()
+    await clientPage.reload()
+    await clientPage.getByRole('button', { name: 'Deliverables', exact: true }).click()
+    await expect(clientPage.getByText(/Approved by the retail team/)).toBeVisible()
+    for (const theme of ['Light', 'Dark']) {
+      await clientPage.getByRole('button', { name: 'Change theme' }).click()
+      await clientPage.getByRole('menuitem', { name: `${theme} theme` }).click()
+      expect(
+        (
+          await new AxeBuilder({ page: clientPage })
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+            .analyze()
+        ).violations.map((v) => v.id),
+      ).toEqual([])
+    }
+    await clientPage.setViewportSize({ width: 390, height: 844 })
+    expect(
+      await clientPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBe(true)
+    await page.goto(`/app/w/${ws}/clients/${clientId}`)
+    await page.getByRole('button', { name: 'Revoke project access', exact: true }).click()
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'Restore project access', exact: true }),
+    ).toBeVisible()
+    expect(
+      (await tenantRequest(clientPage, `/portal/clients/${clientId}/projects/${pid}`)).status,
+    ).toBe(404)
+    await clientPage.reload()
+    await expect(clientPage.getByRole('alert')).toContainText('unavailable')
+    await expect(clientPage.getByText('Homepage design preview', { exact: true })).toHaveCount(0)
+    expect((await tenantRequest(clientPage, `/workspaces/${ws}/projects/${pid}`)).status).toBe(404)
+    expect((await tenantRequest(page, internal)).status).toBe(200)
+  } finally {
+    await context.close()
+  }
+})
+
+test('Phase 7 CRM forms, portal invitation and empty client dashboard are accessible', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000)
+  await authenticated(page)
+  const ws = await createCompany(page, 'Accessible Client Agency', 'accessible-client-agency')
+  await page.goto(`/app/w/${ws}/clients`)
+  await page.getByRole('button', { name: 'Add client', exact: true }).click()
+  for (const theme of ['Light', 'Dark']) {
+    await page.getByRole('button', { name: 'Change theme' }).click()
+    await page.getByRole('menuitem', { name: `${theme} theme` }).click()
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([])
+  }
+  await page.getByLabel('Client name', { exact: true }).fill('Accessible Retail')
+  await page.getByRole('button', { name: 'Create client', exact: true }).click()
+  await page.getByRole('link', { name: 'Accessible Retail', exact: true }).click()
+  const id = page.url().split('/').at(-1)!,
+    root = `/workspaces/${ws}/clients/${id}`,
+    recipient = email()
+  const contact = await tenantRequest(page, root + '/contacts', 'POST', {
+    name: 'External viewer',
+    email: recipient,
+  })
+  expect(
+    (
+      await tenantRequest(page, root + '/invitations', 'POST', {
+        contactId: contact.body.data.id,
+        role: 'CLIENT_VIEWER',
+      })
+    ).status,
+  ).toBe(201)
+  const context = await browser.newContext(),
+    viewer = await context.newPage()
+  try {
+    await signup(viewer, recipient)
+    await verify(viewer, recipient)
+    await login(viewer, recipient)
+    await viewer.goto(await capturedLink(recipient, 'invitation'))
+    await expect(
+      viewer.getByRole('button', { name: 'Accept client invitation', exact: true }),
+    ).toBeVisible()
+    expect(
+      (
+        await new AxeBuilder({ page: viewer })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([])
+    await viewer.getByRole('button', { name: 'Accept client invitation', exact: true }).click()
+    await expect(
+      viewer.getByText('No projects have been shared yet.', { exact: true }),
+    ).toBeVisible()
+    expect(
+      (
+        await new AxeBuilder({ page: viewer })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze()
+      ).violations.map((v) => v.id),
+    ).toEqual([])
+    await viewer.setViewportSize({ width: 390, height: 844 })
+    expect(await viewer.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    )
+    await viewer.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await expect(viewer).toHaveURL(/\/login$/)
+  } finally {
+    await context.close()
+  }
+})

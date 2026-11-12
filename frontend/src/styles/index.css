@@ -5373,3 +5373,58 @@ tbody tr:hover {
   height: 7px;
   accent-color: var(--primary);
 }
+
+/* Authenticated client management and external collaboration */
+.client-management {
+  min-width: 0;
+}
+.client-stack {
+  display: grid;
+  gap: 16px;
+  margin-block: 20px;
+}
+.client-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-block: 20px;
+}
+.client-form > button,
+.client-form > p {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.client-form input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+}
+.client-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+}
+.client-resource {
+  overflow-wrap: anywhere;
+}
+.client-copy {
+  white-space: pre-wrap;
+}
+.client-management details {
+  margin-block: 16px;
+}
+.client-management summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .client-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .portal-header {
+    flex-wrap: wrap;
+  }
+  .portal-nav {
+    flex-wrap: wrap;
+  }
+}

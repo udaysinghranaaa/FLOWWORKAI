@@ -163,3 +163,7 @@ The milestones below retain the original planning history; their test/file lists
 ## Phase 6 current implementation
 
 The explicit November 12 Phase 6 brief now authorizes real projects, tasks, grants, persistent Kanban, assignment, subtasks, comments, activity, My Tasks and workspace aggregates. Implemented behavior and actual verification are tracked in [the Phase 6 report](phase-6-final-report.md); live rollout is separate and still depends on private rotation and Phase 5 tenant readiness. No Phase 7 work is authorized by this update. Earlier milestone lists remain historical plans.
+
+## Phase 7 current delivery boundary
+
+Client CRM, contacts, separate portal memberships/invitations, explicit project grants, published progress/milestones, feedback, reviewed change requests and versioned deliverable decisions are implemented for isolated verification. The Phase 7 final report records actual checks and live rollout blockers. Phase 8 remains unstarted. Private rotation and separately approved Phase 5-7 schema initialization plus real agency/client acceptance are prerequisites for a live readiness claim.

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiClientError } from '@/services/api-client'
 import { clearInvitation } from '@/features/invitations/continuation'
+import { clearPortalInvitation } from '@/features/client-management/portal-continuation'
 
 export const sessionKey = ['auth', 'me'] as const
 export function useSession() {
@@ -24,6 +25,7 @@ export function useSignOut() {
   return async (all = false) => {
     await api.logout(all)
     clearInvitation()
+    clearPortalInvitation()
     await client.cancelQueries()
     client.clear()
     client.setQueryData(sessionKey, null)

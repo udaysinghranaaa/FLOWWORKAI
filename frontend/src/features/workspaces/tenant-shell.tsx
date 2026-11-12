@@ -58,6 +58,8 @@ export default function TenantShell() {
               const destination = event.target.value
               if (destination === workspaceId) return
               await client.cancelQueries({ queryKey: ['tenant', user?.id] })
+              await client.cancelQueries({ queryKey: ['clients', user?.id] })
+              client.removeQueries({ queryKey: ['clients', user?.id] })
               client.removeQueries({
                 predicate: (query) =>
                   query.queryKey[0] === 'tenant' && query.queryKey.includes(workspaceId),
@@ -79,6 +81,9 @@ export default function TenantShell() {
           <nav aria-label="Authenticated workspace navigation">
             <NavLink to={`${base}/overview`}>Overview</NavLink>
             <NavLink to={`${base}/projects`}>Projects</NavLink>
+            {['OWNER', 'ADMIN'].includes(scope.role) && (
+              <NavLink to={`${base}/clients`}>Clients</NavLink>
+            )}
             <NavLink to={`${base}/tasks`}>Tasks</NavLink>
             <NavLink to={`${base}/my-tasks`}>My Tasks</NavLink>
             <NavLink to={`${base}/team`}>Team</NavLink>
