@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/display'
 import { api, ApiClientError } from '@/services/api-client'
 import { sessionKey } from './use-session'
 import { useActionToken } from './use-action-token'
+import { pendingInvitation } from '@/features/invitations/continuation'
 
 type Mode = 'login' | 'signup' | 'forgot' | 'reset'
 const content: Record<Mode, { title: string; subtitle: string; button: string }> = {
@@ -131,7 +132,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
                 if (mode === 'login') {
                   const result = await api.login(values.email, values.password)
                   queryClient.setQueryData(sessionKey, result.user)
-                  navigate('/account', { replace: true })
+                  navigate(pendingInvitation() ? '/app/invitations' : '/account', { replace: true })
                 } else if (mode === 'signup') {
                   const result = await api.register(values.name, values.email, values.password)
                   setNotice(

@@ -1,6 +1,6 @@
 # 02 · Roles and permissions
 
-Status: proposed policy, enforced in future backend implementation. This document is the canonical permission authority for all other plans.
+Status: historical Phase 1 policy with an implemented Phase 5 override below. The Phase 5 architecture and ADR 010 govern current organization/workspace endpoints; project/client planning remains future work.
 
 ## Evaluation model
 
@@ -74,3 +74,7 @@ Removing a membership increments authzRevision and revokes its grants; associate
 ## Platform operations boundary
 
 Platform operators are separate infrastructure identities with MFA and least privilege, not a sixth workspace role. No default UI impersonation or cross-tenant content browsing. Break-glass support requires an explicit support case, documented customer consent where applicable, time-limited elevation and immutable audit of access. Platform billing reconciliation reads minimal provider/account metadata. Production database access is not an alternative to application authorization.
+
+## Implemented Phase 5 policy override
+
+The latest brief introduces Organization above Workspace. The executable organization roles are OWNER/ADMIN/MEMBER; workspace roles are OWNER/ADMIN/MANAGER/MEMBER/VIEWER. Company OWNER/ADMIN explicitly inherit workspace administration, while ordinary company members need current workspace membership. Founding ownership is immutable and cannot be granted, demoted or removed; transfer and multiple owners are deferred. Manager is read-only for implemented team/settings operations. Client/project roles remain future plans. [ADR 010](architecture-decisions/010-organization-tenancy-and-rbac.md) and the [Phase 5 matrix](phase-5-multi-tenant-architecture.md) govern implemented endpoints over historical planning tables.

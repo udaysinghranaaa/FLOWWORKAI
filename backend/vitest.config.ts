@@ -7,5 +7,7 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 10000,
+    // Replica-set fixtures and native password hashing run predictably on Windows.
+    maxWorkers: 1,
   },
 })

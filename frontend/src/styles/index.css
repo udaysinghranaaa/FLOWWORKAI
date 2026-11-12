@@ -5127,3 +5127,131 @@ tbody tr:hover {
   outline: 2px solid var(--cyan);
   outline-offset: 4px;
 }
+/* Real account routes remain independent of the public demo shell. */
+.tenant-layout > header,
+.tenant-onboarding > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.tenant-body {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: calc(100vh - 85px);
+}
+.tenant-body > aside {
+  padding: 28px 20px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tenant-body nav {
+  display: grid;
+  gap: 8px;
+  margin: 24px 0;
+}
+.tenant-body nav a {
+  border-radius: 8px;
+  padding: 10px;
+}
+.tenant-body nav a:hover,
+.tenant-body nav a.active {
+  background: var(--primary-soft);
+  color: var(--primary-text);
+}
+.tenant-body > main {
+  min-width: 0;
+  padding: 32px;
+}
+.tenant-page,
+.tenant-directory,
+.tenant-onboarding {
+  display: grid;
+  gap: 24px;
+}
+.tenant-page h1,
+.tenant-directory h1,
+.tenant-onboarding h1 {
+  font-size: clamp(26px, 3vw, 36px);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+.tenant-directory {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+.tenant-onboarding > .card {
+  width: min(680px, calc(100% - 32px));
+  margin: 24px auto;
+  padding: 32px;
+}
+.tenant-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tenant-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+}
+.tenant-number {
+  font-size: 32px;
+}
+.tenant-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.tenant-table table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+.tenant-table th,
+.tenant-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tenant-page > .card,
+.tenant-directory > .card {
+  padding: 24px;
+}
+.tenant-page .form-stack {
+  max-width: 640px;
+}
+.tenant-onboarding dl {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .tenant-body {
+    grid-template-columns: 1fr;
+  }
+  .tenant-body > aside {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+  .tenant-body nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 12px 0;
+  }
+  .tenant-body > main {
+    padding: 20px 16px;
+  }
+  .tenant-layout > header .badge {
+    display: none;
+  }
+  .tenant-onboarding > .card {
+    padding: 22px;
+  }
+}

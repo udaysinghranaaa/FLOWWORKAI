@@ -4,7 +4,7 @@
 
 FlowWork AI is an agency work management product in development. The executable Phase 2 React frontend demonstrates project delivery, tasks, client collaboration, support conversations, analytics and the planned AI experience using fictional data.
 
-**Current scope: Phase 4 MongoDB identity and real frontend authentication, alongside the preserved frontend demo and Express foundation. Local database/full-stack verification is documented in the Phase 4 report. The November 11 DNS follow-up verified live Atlas connection/ping and development readiness using optional DNS_SERVERS; live auth-flow acceptance remains separate from these checks. Workspace business APIs, payments, uploads, live AI and real-time infrastructure remain unimplemented. Phase 5 has not started.**
+**Current scope: Phase 5 company onboarding, real workspaces, memberships, invitations and database-backed RBAC, alongside preserved Phase 4 authentication and the separate public frontend demo. Local verification and live rollout blockers are recorded in [the Phase 5 report](docs/phase-5-final-report.md). Previously disclosed credentials still require private rotation. Phase 5 Atlas schema initialization and live tenant acceptance are pending; no Phase 6 work has started.**
 
 ## Run locally on Windows
 
@@ -39,7 +39,8 @@ Set-Location C:\FLOWWORKAI\backend
 npm.cmd install
 npm.cmd run build
 npm.cmd run db:check
-# After the private MongoDB configuration passes the check:
+# After private credential rotation and a successful read-only check:
+npm.cmd run schema:tenants -- --rotation-confirmed
 npm.cmd run dev
 ```
 
@@ -81,13 +82,13 @@ Also available: `test:watch`, `format` and the read-only `db:check` after build.
 
 The app preserves the Phase 1 `{data,meta:{requestId}}` / `{error,meta:{requestId}}` contract, with 422 schema errors and 400 malformed JSON. Existing Zod/Helmet/Pino/request-ID/body-cap/rate/error/shutdown infrastructure remains. Real auth adds Mongoose, Argon2id, minimal short-lived JWT access cookies, hashed rotating refresh families, immediate database-backed revocation, CSRF and credentialed exact-origin CORS. Proxy trust remains disabled and limits remain process-local. [OpenAPI](backend/openapi.json) covers only implemented operations.
 
-Sign up in the React form, open the verification link from ignored `backend/.mail-capture/` privately, confirm it, then sign in to `/account`. Capture sends no real email; production requires SMTP. The authenticated page shows actual identity and a Phase 5 workspace placeholder. Demo workspace identities/records remain fictional and never authorize backend requests or become customer data. Browser credentials are HttpOnly cookies, never localStorage. VITE_API_BASE_URL is public connection configuration only; production defaults to the same-origin `/api/v1`. No workspace CRUD, queue, AI, payment or real-time integration is implemented.
+Sign up in the React form, open the verification link from ignored `backend/.mail-capture/` privately, confirm it, then sign in to `/account`. Capture sends no real email; production requires SMTP. The authenticated account now links to real company onboarding and authorized workspaces. Demo workspace identities/records remain fictional and never authorize backend requests or become customer data. Browser credentials are HttpOnly cookies, never localStorage. VITE_API_BASE_URL is public connection configuration only; production defaults to the same-origin `/api/v1`. Real company/workspace administration and invitations are implemented in Phase 5; queues, live AI, payments and real-time integration remain deferred.
 
 ## Implemented frontend modules
 
 Public landing/features/pricing; real login/signup/recovery/verification and guarded account identity; clearly labeled demo onboarding/workspace switching; dashboard; project create/edit/list/detail; task create/edit/assign/filter and list/Kanban views; pointer dragging and keyboard-accessible status controls; task comments; clients and contacts; team profiles and pending demo invitations; support cases with public replies/internal notes; client-facing projects/milestones/feedback/support; notification read state; scripted FlowAI conversations; sample knowledge documents and local file metadata preview; Recharts analytics with date controls and local CSV export; demo workspace/account/appearance/notification settings; illustrative Starter/Growth/Business plans.
 
-The Phase 2 brief expanded the UI foundation into a complete connected frontend preview. Future roadmap phases still own production business rules and domain persistence/integrations. Phase 1/2 guides retain that history; the Phase 4 guide/report describe the current real identity implementation and its remaining live acceptance gate.
+The Phase 2 brief expanded the UI foundation into a complete connected frontend preview. Future roadmap phases still own production business rules and domain persistence/integrations. Phase 1/2 guides retain that history; the Phase 4 guides describe preserved identity behavior, while the Phase 5 guides describe current tenancy and live rollout gates.
 
 ## Problem and customer hypothesis
 
@@ -95,7 +96,7 @@ Small agencies often coordinate projects, client requests, documents and status 
 
 ## Product modules and remaining scope
 
-Real identity and sessions are implemented in Phase 4 with live Atlas acceptance still pending. Remaining production modules: workspaces/memberships; clients/contacts; projects/grants; tasks/Kanban; comments/files; milestones/client portal; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
+Real identity/sessions and company/workspace membership administration are implemented locally through Phase 5; live rollout awaits credential rotation and schema initialization. Remaining production modules: clients/contacts; projects/grants; tasks/Kanban; comments/files; milestones/client portal; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
 
 Launch AI is internal and read-only. Teams initially mean workspace/project membership. CRM automation, payroll, full accounting, live document editing, SSO and autonomous AI actions are outside the launch scope.
 
@@ -107,7 +108,7 @@ Launch AI is internal and read-only. Teams initially mean workspace/project memb
 | State/forms | TanStack Query for server state, Zustand for UI state, React Hook Form + Zod |
 | Backend | Node.js, Express, TypeScript, REST, Zod, structured logs and centralized errors |
 | Persistence | MongoDB Atlas, Mongoose, compound indexes, transactions and tenant-scoped repositories |
-| Authentication | Secure HttpOnly cookies, short-lived JWT access with database session checks, rotating opaque refresh families, Argon2id; tenant authorization remains future work |
+| Authentication | Secure HttpOnly cookies, short-lived JWT access with database session checks, rotating opaque refresh families, Argon2id; current database organization/workspace RBAC |
 | Real-time/jobs | Socket.IO, durable MongoDB outbox, worker from same backend codebase; proposed Redis for queue/adapter/limits |
 | AI | Server-side provider adapter, embeddings, MongoDB Vector Search, tenant-safe RAG, validation and quotas |
 | Files | Private S3-compatible storage, clean-only access and malware scanning |
@@ -117,11 +118,11 @@ Frontend dependencies are recorded in `frontend/package.json` and locked in `fro
 
 ## Architecture summary
 
-The implemented frontend is organized into feature pages, shared components, typed fixtures and a replaceable in-memory repository. TanStack Query is configured for future remote state; local demo records use a subscribed repository, and Zustand owns UI preferences. No network service is impersonated.
+The implemented frontend is organized into feature pages, shared components, typed fixtures and a replaceable in-memory repository. TanStack Query serves real identity and tenant APIs; local demo records use a subscribed repository, and Zustand owns UI preferences. No network service is impersonated.
 
-The implemented backend exports an isolated application factory and a separate compiled listener entrypoint. Global HTTP policy precedes the versioned registry; routes validate input, controllers map transport, auth services perform guarded MongoDB transactions, and one error handler normalizes failures. React identity flows call real auth APIs, while demo business pages still use the unchanged in-memory repository. Required database readiness gates real startup/traffic; cleanup hooks close actual connections and drain pending mail.
+The implemented backend exports an isolated application factory and a separate compiled listener entrypoint. Global HTTP policy precedes the versioned registry; routes validate input, controllers map transport, auth and tenant services perform guarded MongoDB transactions, and one error handler normalizes failures. React identity flows call real auth APIs, while demo business pages still use the unchanged in-memory repository. Required database readiness gates real startup/traffic; cleanup hooks close actual connections and drain pending mail.
 
-The planned production system remains a modular monolith with domain-owned services and repositories. A React browser will communicate with one Express API/socket boundary; a worker from the same backend will process durable side effects and AI ingestion. MongoDB tenant records will require workspaceId and server-enforced membership/resource/client rules. Those security controls are documentation targets, not implemented frontend guarantees.
+The planned production system remains a modular monolith with domain-owned services and repositories. A React browser will communicate with one Express API/socket boundary; a worker from the same backend will process durable side effects and AI ingestion. Implemented tenant records use organizationId/workspaceId with current database membership checks. Future client/project rules, worker/outbox and sockets remain plans, not frontend guarantees.
 
 This trades physical tenant isolation and independent domain deployment for simpler transactions and lower early operational burden. Tests, explicit query scope and careful serializers are essential. No microservices or Kubernetes are planned for MVP.
 
@@ -132,8 +133,8 @@ This trades physical tenant isolation and independent domain deployment for simp
 | 1 | Planning and Architecture | Documentation complete |
 | 2 | Complete premium React frontend demo | Implemented; see Phase 2 report for verification |
 | 3 | Express Backend Foundation | Implemented; see Phase 3 report for verification |
-| 4 | MongoDB and Authentication | Implemented with isolated verification; live Atlas acceptance blocked |
-| 5 | Workspaces, Teams and Multi-Tenancy | Planned |
+| 4 | MongoDB and Authentication | Preserved; current live rollout gates are in the Phase 5 report |
+| 5 | Companies, Workspaces, Teams and Multi-Tenancy | Implemented and isolated-tested; live schema/acceptance pending rotation |
 | 6 | Projects and Task Management | Planned |
 | 7 | Client Portal | Planned |
 | 8 | Support Ticket Management | Planned |
@@ -179,3 +180,7 @@ The launch MVP is the minimum scope after integrated gates through Phase 12, not
 ## Working on this repository
 
 Read AGENTS.md and the relevant design documents first. Implement only the explicitly requested phase, preserve existing functionality and report actual verification. This documentation is an implementation plan; it does not demonstrate production performance, security compliance or commercial viability. Destructive/sensitive operations require appropriate authorization. Stop at the authorized phase boundary.
+
+## Phase 5 real company workspace
+
+Read [tenant architecture](docs/phase-5-multi-tenant-architecture.md), [interview notes](docs/phase-5-interview-notes.md) and [verification report](docs/phase-5-final-report.md). Real onboarding is `/app/onboarding`; authorized workspaces are `/app/workspaces`. Public `/onboarding` and `/w/studio` remain demos. After private credential rotation, run `npm.cmd run build`, `npm.cmd run db:check`, then explicitly `npm.cmd run schema:tenants -- --rotation-confirmed` in backend before starting the real server. This adds schema only; never seed or clean Atlas with test fixtures. The agent has not performed live schema installation. Run commands separately in frontend/backend; there is no root package.

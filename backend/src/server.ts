@@ -9,6 +9,9 @@ import { createAuthModels, ensureAuthIndexes } from './modules/auth/auth.models.
 import { createAuthService } from './modules/auth/auth.service.js'
 import { createMailAdapter } from './lib/mail.js'
 import { configureDns } from './config/dns.js'
+import { createTenantModels, ensureTenantIndexes } from './modules/organizations/tenant.models.js'
+import { tenantIndexesReady } from './modules/organizations/tenant.schema-initialization.js'
+import { createTenantService } from './modules/organizations/tenant.service.js'
 
 async function main(): Promise<void> {
   // npm start explicitly forces production even if a copied local .env says development.
@@ -25,6 +28,23 @@ async function main(): Promise<void> {
   try {
     const models = createAuthModels(database.connection)
     await ensureAuthIndexes(models)
+    const tenantModels = createTenantModels(database.connection)
+    if (config.nodeEnv === 'test') await ensureTenantIndexes(tenantModels)
+    else if (!(await tenantIndexesReady(tenantModels))) {
+      logger.error(
+        { code: 'TENANT_SCHEMA_NOT_READY' },
+        'Rotate disclosed credentials privately, then explicitly initialize the Phase 5 schema before starting the application.',
+      )
+      throw new Error('Tenant schema is not initialized.')
+    }
+    const tenants = createTenantService({
+      models: tenantModels,
+      authModels: models,
+      connection: database.connection,
+      mail,
+      logger,
+      webOrigin: authConfig.webOrigin,
+    })
     const service = await createAuthService({
       models,
       connection: database.connection,
@@ -36,7 +56,7 @@ async function main(): Promise<void> {
       config,
       logger,
       lifecycle,
-      auth: { service, config: authConfig, isReady: database.isReady },
+      auth: { service, config: authConfig, isReady: database.isReady, tenants },
     })
     const running = await startHttpServer({
       app,
@@ -46,6 +66,7 @@ async function main(): Promise<void> {
       cleanupHooks: [
         async () => {
           await service.drainMail()
+          await tenants.drainMail()
           mail.close?.()
         },
         database.close,

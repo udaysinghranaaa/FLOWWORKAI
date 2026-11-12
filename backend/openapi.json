@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "FlowWork AI - HTTP foundation and database authentication",
-    "version": "0.4.0",
-    "description": "Implemented Phase 3 infrastructure plus Phase 4 MongoDB identity. Authentication uses HttpOnly access JWT/rotating refresh cookies, exact credentialed CORS and session-bound signed CSRF tokens. Production assumes same-site HTTPS hosting. Development examples remain disabled in production. No workspace/business APIs are implemented. See docs/phase-4-database-auth-architecture.md."
+    "title": "FlowWork AI - Multi-tenant SaaS",
+    "version": "0.5.0",
+    "description": "Implemented Phases 3-5: infrastructure, database authentication, organizations, workspaces, memberships and invitations. Database authorization runs per request; invitations require matching verified email. No projects/tasks, AI or billing persistence."
   },
   "servers": [
     {
@@ -28,6 +28,10 @@
     {
       "name": "Authentication",
       "description": "Real MongoDB identity. Bootstrap CSRF first; unsafe requests require an allowlisted Origin and X-CSRF-Token. Access/refresh credentials never appear in JSON."
+    },
+    {
+      "name": "Tenancy",
+      "description": "Organization and workspace scopes are distinct. All unsafe requests require signed CSRF plus exact Origin."
     }
   ],
   "paths": {
@@ -36,7 +40,7 @@
         "tags": ["Health"],
         "operationId": "getHealth",
         "summary": "HTTP service health/readiness summary",
-        "description": "Reports listener/drain state and required MongoDB dependency readiness. A standalone infrastructure-only factory can report phase 3; the real server reports phase 4. No secrets or connection metadata are exposed.",
+        "description": "Reports listener/drain state and MongoDB readiness. Infrastructure factory reports phase 3, auth-only factory phase 4, and the real tenant server phase 5. No connection metadata is exposed.",
         "parameters": [
           {
             "name": "X-Request-ID",
@@ -3880,6 +3884,2433 @@
           }
         }
       }
+    },
+    "/api/v1/organizations": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getorganizations",
+        "summary": "List current organization memberships",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OrganizationPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postorganizations",
+        "summary": "Atomically create company, first workspace and owner memberships",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "organization": {
+                          "$ref": "#/components/schemas/Organization"
+                        },
+                        "workspace": {
+                          "$ref": "#/components/schemas/Workspace"
+                        }
+                      },
+                      "required": ["organization", "workspace"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCompany"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getorganizationsorgId",
+        "summary": "Read organization",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Organization"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Tenancy"],
+        "operationId": "patchorganizationsorgId",
+        "summary": "Update organization with optimistic version",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Organization"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "website": {
+                    "type": "string"
+                  },
+                  "industry": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "archived"]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": ["version"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/workspaces": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getorganizationsorgIdworkspaces",
+        "summary": "List authorized company workspaces",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkspacePage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postorganizationsorgIdworkspaces",
+        "summary": "Create workspace and founding owner",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workspace"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspace"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/workspaces": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getmeworkspaces",
+        "summary": "List authorized workspaces",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkspacePage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getworkspacesworkspaceId",
+        "summary": "Resolve authorized workspace overview",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkspaceContext"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Tenancy"],
+        "operationId": "patchworkspacesworkspaceId",
+        "summary": "Update workspace with optimistic version",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Workspace"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "archived"]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": ["version"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/members": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getorganizationsorgIdmembers",
+        "summary": "List active scoped memberships",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MemberPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/members/{memberId}": {
+      "patch": {
+        "tags": ["Tenancy"],
+        "operationId": "patchorganizationsorgIdmembersmemberId",
+        "summary": "Change a permitted non-owner role",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["ADMIN", "MEMBER"]
+                  }
+                },
+                "required": ["role"]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tenancy"],
+        "operationId": "deleteorganizationsorgIdmembersmemberId",
+        "summary": "Revoke scoped membership; ownership protected",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/invitations": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getorganizationsorgIdinvitations",
+        "summary": "List scoped invitations; workspace list exposes single-target invitations only",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InvitationPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postorganizationsorgIdinvitations",
+        "summary": "Issue hashed 72-hour invitation; access remains pending",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Invitation"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/members": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getworkspacesworkspaceIdmembers",
+        "summary": "List active scoped memberships",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MemberPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/members/{memberId}": {
+      "patch": {
+        "tags": ["Tenancy"],
+        "operationId": "patchworkspacesworkspaceIdmembersmemberId",
+        "summary": "Change a permitted non-owner role",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+                  }
+                },
+                "required": ["role"]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Tenancy"],
+        "operationId": "deleteworkspacesworkspaceIdmembersmemberId",
+        "summary": "Revoke scoped membership; ownership protected",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/invitations": {
+      "get": {
+        "tags": ["Tenancy"],
+        "operationId": "getworkspacesworkspaceIdinvitations",
+        "summary": "List scoped invitations; workspace list exposes single-target invitations only",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InvitationPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/invitations/{invitationId}/resend": {
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postorganizationsorgIdinvitationsinvitationIdresend",
+        "summary": "Replace token after 60-second cooldown",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Invitation"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/invitations/{invitationId}/revoke": {
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postorganizationsorgIdinvitationsinvitationIdrevoke",
+        "summary": "Revoke pending invitation",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          },
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Invitation"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/preview": {
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postinvitationspreview",
+        "summary": "Public token-scoped minimal preview",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InvitationPreview"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationToken"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "tags": ["Tenancy"],
+        "operationId": "postinvitationsaccept",
+        "summary": "Atomically accept once with matching verified email",
+        "description": "Active database identity and membership required, except token-scoped public preview. Cross-tenant IDs return 404. Current roles are authoritative; archived tenants restrict members. All non-GET methods require CSRF. Validation rejects unknown fields. Founding ownership is immutable in Phase 5.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-ID",
+            "in": "header",
+            "required": false,
+            "description": "Optional UUID, exactly 36 characters. Invalid values are replaced, not echoed.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe allowlisted data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "organizationId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{24}$"
+                        },
+                        "workspaceId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{24}$"
+                        }
+                      },
+                      "required": ["organizationId", "workspaceId"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "410": {
+            "$ref": "#/components/responses/TenantError410"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationToken"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3977,7 +6408,7 @@
           },
           "phase": {
             "type": "integer",
-            "enum": [3, 4]
+            "enum": [3, 4, 5]
           },
           "timestamp": {
             "type": "string",
@@ -4197,6 +6628,464 @@
           }
         },
         "required": ["message", "deliveryMode", "verificationRequired"]
+      },
+      "Organization": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived"]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "website": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "name", "slug", "description", "status", "version"]
+      },
+      "Workspace": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "archived"]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "organizationId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          }
+        },
+        "required": ["id", "name", "slug", "description", "status", "version", "organizationId"]
+      },
+      "WorkspaceContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "organization": {
+            "$ref": "#/components/schemas/Organization"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/Workspace"
+          },
+          "organizationRole": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memberCount": {
+            "type": "integer"
+          },
+          "pendingInvitations": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "organization",
+          "workspace",
+          "organizationRole",
+          "role",
+          "permissions",
+          "memberCount",
+          "pendingInvitations"
+        ]
+      },
+      "Member": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          },
+          "status": {
+            "type": "string"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "accountStatus": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "userId", "name", "email", "role", "status", "joinedAt", "accountStatus"]
+      },
+      "Invitation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "organizationId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "organizationRole": {
+            "type": "string",
+            "enum": ["ADMIN", "MEMBER"]
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "workspaceId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{24}$"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+                }
+              },
+              "required": ["workspaceId", "role"]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "accepted", "revoked", "expired"]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "email",
+          "organizationRole",
+          "targets",
+          "status",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "CreateCompany": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "workspaceName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "workspaceSlug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "website": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["name", "slug", "workspaceName", "workspaceSlug", "creationKey"]
+      },
+      "CreateWorkspace": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["name", "slug", "creationKey"]
+      },
+      "InviteBody": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "organizationRole": {
+            "type": "string",
+            "enum": ["ADMIN", "MEMBER"]
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "workspaceId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{24}$"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+                }
+              },
+              "required": ["workspaceId", "role"]
+            }
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": ["email", "organizationRole", "targets"]
+      },
+      "InvitationToken": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "writeOnly": true
+          }
+        },
+        "required": ["token"]
+      },
+      "InvitationPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "organizationName": {
+            "type": "string"
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+                }
+              },
+              "required": ["name", "role"]
+            }
+          },
+          "organizationRole": {
+            "type": "string",
+            "enum": ["OWNER", "ADMIN", "MANAGER", "MEMBER", "VIEWER"]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["organizationName", "workspaces", "organizationRole", "expiresAt"]
+      },
+      "OrganizationPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Organization"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkspacePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workspace"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "MemberPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "InvitationPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
       }
     },
     "securitySchemes": {
@@ -4217,6 +7106,209 @@
         "in": "header",
         "name": "X-CSRF-Token",
         "description": "Obtain from GET /auth/csrf; requires matching HttpOnly CSRF/context cookies and an exact allowlisted Origin. Token rotates on login/refresh; bootstrap before retrying a CSRF rejection."
+      }
+    },
+    "responses": {
+      "TenantError400": {
+        "description": "Malformed request.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError401": {
+        "description": "Missing/invalid/expired JWT or inactive database session/account.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError403": {
+        "description": "Untrusted Origin, invalid CSRF or verified-email policy.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError404": {
+        "description": "Resource concealed or unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError409": {
+        "description": "Duplicate, protected ownership or stale version.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError410": {
+        "description": "Invitation expired, revoked, accepted or invalid.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError413": {
+        "description": "JSON exceeds 16 KiB.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError415": {
+        "description": "Unsupported JSON encoding or charset.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError422": {
+        "description": "Strict body/query/parameter validation failed.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError429": {
+        "description": "API or auth limit exceeded; observe RateLimit and Retry-After.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError500": {
+        "description": "Sanitized unexpected failure.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "TenantError503": {
+        "description": "Database or lifecycle unavailable.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Validated incoming UUID or a freshly generated UUID; also appears in meta.requestId.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
       }
     }
   }

@@ -76,7 +76,12 @@ export function createApp(options: AppOptions) {
     '/api/v1',
     createApiRouter(
       config,
-      createHealthService(lifecycle, options.now, options.auth?.isReady, options.auth ? 4 : 3),
+      createHealthService(
+        lifecycle,
+        options.now,
+        options.auth?.isReady,
+        options.auth?.tenants ? 5 : options.auth ? 4 : 3,
+      ),
       options.exampleService ?? createExampleService(),
       options.auth,
     ),

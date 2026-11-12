@@ -1,6 +1,6 @@
 # 05 · REST API contracts
 
-Status: historical Phase 1 target `/api/v1` contract. The Phase 3 foundation and Phase 4 identity implementation now exist; see [current OpenAPI](../backend/openapi.json) and [Phase 4 architecture](phase-4-database-auth-architecture.md) for operational routes. Later business tables below remain planned. IDs in examples are illustrative 24-character hex ObjectIds. Canonical future tenant policy is document 02; historical schemas/invariants are document 04.
+Status: historical Phase 1 target contract. Infrastructure, authentication and Phase 5 company/workspace/membership/invitation endpoints are implemented. OpenAPI 0.5 and the Phase 5 addendum below govern operational routes; later business tables remain planned.
 
 Phase 4 addendum: the explicit latest brief chooses JWT access cookies with live database session checks, `/auth/register` with `name`, and `/auth/me`. Historical `/auth/signup`, `displayName` and `/users/me` are not operational aliases. Generic registration/recovery responses, safe envelopes and pre-auth CSRF intent remain. [ADR 009](architecture-decisions/009-jwt-cookie-authentication.md) records the changes; live Atlas verification remains blocked as documented in the current report.
 
@@ -196,3 +196,9 @@ Idempotency-Key: task-create-example-001
 ```
 
 The AI example is illustrative output, not an assertion about any existing source. Citation URLs are resolved by an authorized application route; model-supplied arbitrary URLs are not trusted.
+
+## Implemented Phase 5 contract
+
+[OpenAPI 0.5](../backend/openapi.json) and [tenant architecture](phase-5-multi-tenant-architecture.md) are authoritative for current routes; earlier business tables remain targets. Company routes use `/organizations/:orgId`; workspace routes use `/workspaces/:workspaceId`, and the current user list is `/me/workspaces`. Both support `members` and `invitations` subresources. Create/read/update companies and workspaces, list/change/revoke scoped memberships, issue/resend/revoke invitations, POST token preview and POST acceptance are implemented. There is no company/workspace hard-delete or ownership-transfer API. Unsafe requests require cookies, exact Origin and signed CSRF.
+
+Current list responses are `{data:{items,nextCursor,hasMore},meta:{requestId}}`, default 20/max 50, ascending ObjectID cursor. Cursors are format-validated and filters always reapply current tenant authorization; they are not the historical signed cursor proposal. Settings PATCH requires integer `version`; creation requires a UUID `creationKey`. Company slugs are immutable and globally unique; workspace slugs are unique within the parent. Strict body/query/parameter validation returns 422; unrelated scopes return concealed 404, denied capabilities 403, conflicts/owner protection 409 and unusable invitations 410. See OpenAPI for exact payload allowlists.

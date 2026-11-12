@@ -1,6 +1,6 @@
 # 03 · System architecture
 
-Status: design only. Proposed topology is a TypeScript modular monolith, with an HTTP/socket process and a worker process built from the same backend repository and domain modules. No services have been deployed.
+Status: historical Phase 1 topology, with HTTP/auth/tenant modules now implemented through Phase 5. See the Phase 5 runtime addendum and architecture for current behavior; worker, sockets, storage and AI sections remain plans. No production deployment is claimed.
 
 ## Boundaries and stack
 
@@ -190,3 +190,7 @@ API reserves attachment record and random key under workspace/parent prefix → 
 Start one API process and one worker. Scale stateless API replicas behind an edge; Socket.IO polling requires sticky routing and a compatible distributed adapter. Split worker queues by latency/security risk, constrain provider calls, and index measured query paths. Redis caches are optional accelerators, never authorization truth. Cap pagination, input bodies, exports and AI context; analytics uses scoped aggregation initially, materialized summaries only when measured need arises.
 
 A modular monolith provides local transactions, simpler debugging, lower operating cost and explicit code boundaries while the domain is changing. It shares failure/deploy boundaries; background workloads need resource isolation. Microservices would add distributed consistency, authentication and operational complexity before evidence of need. Extract a domain only after independently measured scaling, ownership or compliance requirements justify it. Kubernetes is outside MVP scope.
+
+## Phase 5 runtime addendum
+
+The implemented shared-database tenant parent is Organization, containing Workspace. Current database membership authorizes every tenant endpoint; writes reauthorize in MongoDB transactions and serialize membership changes through an organization guard. The frontend real `/app` shell has user/workspace-scoped query state; the public demo remains independent. See [Phase 5 architecture](phase-5-multi-tenant-architecture.md) for six runtime diagrams and rollout constraints. Live business acceptance is pending credential rotation and additive tenant schema initialization. No projects/tasks, sockets, uploads or AI persistence has been added.

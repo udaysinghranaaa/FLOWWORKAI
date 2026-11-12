@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiClientError } from '@/services/api-client'
+import { clearInvitation } from '@/features/invitations/continuation'
 
 export const sessionKey = ['auth', 'me'] as const
 export function useSession() {
@@ -22,6 +23,7 @@ export function useSignOut() {
   const client = useQueryClient()
   return async (all = false) => {
     await api.logout(all)
+    clearInvitation()
     await client.cancelQueries()
     client.clear()
     client.setQueryData(sessionKey, null)

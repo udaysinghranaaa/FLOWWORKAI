@@ -65,7 +65,10 @@ test.setTimeout(60000)
 const password = 'Browser test passphrase 739!'
 const email = () => `auth-e2e-${randomUUID()}@example.com`
 
-async function capturedLink(recipient: string, purpose: 'verify-email' | 'reset-password') {
+async function capturedLink(
+  recipient: string,
+  purpose: 'verify-email' | 'reset-password' | 'invitation',
+) {
   const directory = fileURLToPath(new URL('../../backend/.mail-capture/', import.meta.url))
   let link = ''
   await expect
@@ -251,4 +254,198 @@ test('authenticated identity page passes accessibility and keeps demo/theme sepa
   await page.goto('/account')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await expect(page.getByRole('heading', { name: 'Welcome, Browser Identity.' })).toBeVisible()
+})
+
+async function createCompany(page: Page, name: string, slug: string) {
+  await page.goto('/app/onboarding')
+  await page.getByLabel('Company name', { exact: true }).fill(name)
+  await page.getByLabel('Company slug', { exact: true }).fill(slug)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByLabel('Workspace name', { exact: true }).fill(`${name} workspace`)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('button', { name: 'Create company', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Your company is ready.' })).toBeVisible()
+  await page.getByRole('link', { name: 'Enter workspace' }).click()
+  await expect(page.getByRole('heading', { name: `${name} workspace`, exact: true })).toBeVisible()
+  return page.url().match(/\/app\/w\/([^/]+)/)![1]!
+}
+async function tenantRequest(page: Page, path: string, method = 'GET', body?: object) {
+  return page.evaluate(
+    async ({ path, method, body }) => {
+      const csrf = await fetch('http://127.0.0.1:5081/api/v1/auth/csrf', {
+        credentials: 'include',
+      }).then((r) => r.json())
+      const response = await fetch(`http://127.0.0.1:5081/api/v1${path}`, {
+        method,
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.data.csrfToken },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      })
+      return { status: response.status, body: await response.json() }
+    },
+    { path, method, body },
+  )
+}
+test('Phase 5 onboarding, settings, reload, switching, themes and isolation use MongoDB', async ({
+  page,
+  browser,
+}) => {
+  await authenticated(page)
+  const first = await createCompany(page, 'Hans Solar', 'hans-solar')
+  await expect(page.getByText('Active workspace memberships')).toBeVisible()
+  expect((await new AxeBuilder({ page }).analyze()).violations.map((v) => v.id)).toEqual([])
+  const second = await createCompany(page, 'Creative Agency', 'creative-agency')
+  await page.getByLabel('Current workspace').selectOption(first)
+  await expect(
+    page.getByRole('heading', { name: 'Hans Solar workspace', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Creative Agency workspace', exact: true }),
+  ).toHaveCount(0)
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: 'Hans Solar workspace', exact: true }),
+  ).toBeVisible()
+  await page.getByRole('link', { name: 'Workspace settings', exact: true }).click()
+  await page.getByLabel('Workspace name', { exact: true }).fill('Solar Operations')
+  await page.getByRole('button', { name: 'Save settings' }).click()
+  await expect(page.getByRole('status')).toContainText('Settings saved')
+  await page.getByRole('link', { name: 'Overview', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Solar Operations', exact: true })).toBeVisible()
+  await page.getByLabel('Current workspace').selectOption(second)
+  await expect(
+    page.getByRole('heading', { name: 'Creative Agency workspace', exact: true }),
+  ).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const outsider = await browser.newContext(),
+    other = await outsider.newPage()
+  await authenticated(other)
+  expect((await tenantRequest(other, `/workspaces/${first}`)).status).toBe(404)
+  await other.goto(`/app/w/${first}/overview`)
+  await expect(other.getByRole('heading', { name: 'Workspace access unavailable' })).toBeVisible()
+  await expect(other.getByText('Solar Operations', { exact: true })).toHaveCount(0)
+  await outsider.close()
+})
+test('Phase 5 new and existing users accept captured invitations, roles update and removal revokes access', async ({
+  page,
+  browser,
+}) => {
+  await authenticated(page)
+  const workspaceId = await createCompany(page, 'Hans Solar', 'hans-solar')
+  const org = (await tenantRequest(page, `/workspaces/${workspaceId}`)).body.data.organization
+    .id as string
+  const memberContext = await browser.newContext(),
+    member = await memberContext.newPage(),
+    recipient = email()
+  await page.getByRole('link', { name: 'Team', exact: true }).click()
+  await page.getByRole('button', { name: 'Invite member' }).click()
+  await page.getByLabel('Email address', { exact: true }).fill(recipient)
+  await page.getByRole('button', { name: 'Create invitation', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText(recipient, { exact: true })).toBeVisible()
+  const link = await capturedLink(recipient, 'invitation')
+  await member.goto(link)
+  await expect(member.getByRole('link', { name: 'Create an account', exact: true })).toBeVisible()
+  await signup(member, recipient)
+  await verify(member, recipient)
+  await member.goto('/login')
+  await member.getByLabel('Work email').fill(recipient)
+  await member.getByLabel('Password', { exact: true }).fill(password)
+  await member.getByRole('button', { name: 'Sign in', exact: true }).click()
+  // Full-page navigation to verification intentionally clears memory; reopen the original invitation.
+  await expect(member.getByRole('heading', { name: 'Welcome, Browser Identity.' })).toBeVisible()
+  await member.goto(link)
+  await member.getByRole('button', { name: 'Accept invitation', exact: true }).click()
+  await expect(
+    member.getByRole('heading', { name: 'Hans Solar workspace', exact: true }),
+  ).toBeVisible()
+  await expect(member.getByRole('button', { name: 'Invite member' })).toHaveCount(0)
+  await page.reload()
+  const row = page
+    .getByRole('row')
+    .filter({ hasText: recipient })
+    .filter({ has: page.getByRole('button', { name: 'Save role' }) })
+  await row.getByRole('combobox').selectOption('VIEWER')
+  await row.getByRole('button', { name: 'Save role' }).click()
+  await expect(page.getByRole('status')).toContainText('Change saved')
+  await member.reload()
+  await expect(member.getByText('Company role: MEMBER', { exact: true })).toBeVisible()
+  expect(
+    (
+      await tenantRequest(member, `/workspaces/${workspaceId}`, 'PATCH', {
+        name: 'Forbidden',
+        version: 1,
+      })
+    ).status,
+  ).toBe(403)
+  await row.getByRole('button', { name: 'Remove', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('Change saved')
+  await member.reload()
+  await expect(member.getByRole('heading', { name: 'Workspace access unavailable' })).toBeVisible()
+  // The already verified member accepts a fresh invitation without re-registration.
+  const fresh = await tenantRequest(page, `/organizations/${org}/invitations`, 'POST', {
+    email: recipient,
+    organizationRole: 'MEMBER',
+    targets: [{ workspaceId, role: 'MEMBER' }],
+  })
+  expect(fresh.status).toBe(201)
+  // Use the newest controlled message, without writing its private contents to the report.
+  const files = await readdir(
+    fileURLToPath(new URL('../../backend/.mail-capture/', import.meta.url)),
+  )
+  let freshLink = ''
+  for (const file of files) {
+    if (!file.endsWith('.json')) continue
+    const message = JSON.parse(
+      await readFile(
+        fileURLToPath(new URL(`../../backend/.mail-capture/${file}`, import.meta.url)),
+        'utf8',
+      ),
+    )
+    if (message.to === recipient && message.purpose === 'invitation' && message.link !== link)
+      freshLink = message.link
+  }
+  expect(Boolean(freshLink)).toBe(true)
+  await member.goto(freshLink)
+  await member.getByRole('button', { name: 'Accept invitation', exact: true }).click()
+  await expect(
+    member.getByRole('heading', { name: 'Hans Solar workspace', exact: true }),
+  ).toBeVisible()
+  await member.goto('/account')
+  await member.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await member.goto(`/app/w/${workspaceId}/overview`)
+  await expect(member.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+  await memberContext.close()
+})
+
+test('Phase 5 invitation dialog is keyboard accessible in light/dark themes and mobile layout', async ({
+  page,
+}) => {
+  await authenticated(page)
+  await createCompany(page, 'Accessible Company', 'accessible-company')
+  await page.getByRole('link', { name: 'Team', exact: true }).click()
+  for (const theme of ['Light', 'Dark']) {
+    await page.getByRole('button', { name: 'Change theme' }).click()
+    await page.getByRole('menuitem', { name: `${theme} theme` }).click()
+    await page.getByRole('button', { name: 'Invite member' }).click()
+    await expect(page.getByRole('dialog', { name: 'Invite a teammate' })).toBeVisible()
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze()
+    expect(results.violations.map((v) => v.id)).toEqual([])
+    await page.getByLabel('Email address', { exact: true }).focus()
+    await page.keyboard.press('Tab')
+    await expect(page.getByLabel('Company role', { exact: true })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Invite member' })).toBeFocused()
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'Invite member' }).click()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Change theme' }).click()
+  await page.getByRole('menuitem', { name: 'System theme' }).click()
 })

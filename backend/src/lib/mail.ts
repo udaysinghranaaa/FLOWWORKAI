@@ -6,8 +6,16 @@ import type { AuthConfig } from '../config/auth-env.js'
 
 export interface AuthMail {
   to: string
-  purpose: 'verify-email' | 'reset-password'
+  purpose: 'verify-email' | 'reset-password' | 'invitation'
   link: string
+  context?: {
+    organizationName: string
+    workspaceNames: string[]
+    roles: string[]
+    inviterName: string
+    expiresAt: string
+    message: string
+  }
 }
 export interface MailAdapter {
   send: (message: AuthMail) => Promise<void>
@@ -50,10 +58,12 @@ export function createMailAdapter(
         from: smtp.from,
         to: message.to,
         subject:
-          message.purpose === 'verify-email'
-            ? 'Verify your FlowWork AI email'
-            : 'Reset your FlowWork AI password',
-        text: `Open this one-time link to ${message.purpose}:\n${message.link}\nIf you did not request this, ignore this message.`,
+          message.purpose === 'invitation'
+            ? "You're invited to join a FlowWork AI workspace"
+            : message.purpose === 'verify-email'
+              ? 'Verify your FlowWork AI email'
+              : 'Reset your FlowWork AI password',
+        text: `${message.context ? `${message.context.inviterName} invites you to ${message.context.organizationName}.\nWorkspaces: ${message.context.workspaceNames.join(', ')}\nRoles: ${message.context.roles.join(', ')}\nExpires: ${message.context.expiresAt}\n${message.context.message}\n` : ''}Open this one-time link to ${message.purpose}:\n${message.link}\nIf you did not request this, ignore this message.`,
       })
       if (!info.accepted.length) throw new Error('Mail provider did not accept the message.')
     },

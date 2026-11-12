@@ -5,6 +5,11 @@ import { parseAuthEnv } from '../src/config/auth-env.js'
 import { connectDatabase } from '../src/lib/database.js'
 import { createAuthModels, ensureAuthIndexes } from '../src/modules/auth/auth.models.js'
 import { createAuthService } from '../src/modules/auth/auth.service.js'
+import {
+  createTenantModels,
+  ensureTenantIndexes,
+} from '../src/modules/organizations/tenant.models.js'
+import { createTenantService } from '../src/modules/organizations/tenant.service.js'
 import type { AuthMail } from '../src/lib/mail.js'
 import { createApp } from '../src/app.js'
 import { capturedLogger, testConfig } from './helpers.js'
@@ -13,7 +18,7 @@ import { assertSafeTestDatabase } from './test-database-safety.js'
 export { assertSafeTestDatabase } from './test-database-safety.js'
 
 /** Never reads process.env.MONGODB_URI or .env; only generated loopback replica sets. */
-export async function createAuthFixture() {
+export async function createAuthFixture(options: { tenants?: boolean } = {}) {
   const name = `flowwork_test_${randomUUID().replaceAll('-', '')}`
   const repl = await MongoMemoryReplSet.create({
     replSet: { count: 1 },
@@ -46,6 +51,23 @@ export async function createAuthFixture() {
     now,
   })
   let available = true
+  const tenantModels = options.tenants ? createTenantModels(database.connection) : undefined
+  if (tenantModels) await ensureTenantIndexes(tenantModels)
+  const tenants = tenantModels
+    ? createTenantService({
+        models: tenantModels,
+        authModels: models,
+        connection: database.connection,
+        mail: {
+          send: async (message) => {
+            messages.push(message)
+          },
+        },
+        logger: logging.logger,
+        webOrigin: 'http://localhost:5173',
+        now,
+      })
+    : undefined
   function app(max = 1000) {
     return createApp({
       config,
@@ -56,6 +78,7 @@ export async function createAuthFixture() {
         config: authConfig,
         isReady: () => available && database.isReady(),
         rateLimitMax: max,
+        ...(tenants ? { tenants } : {}),
       },
     })
   }
@@ -68,6 +91,8 @@ export async function createAuthFixture() {
     messages,
     logging,
     database,
+    tenantModels,
+    tenants,
     unavailable: (value: boolean) => {
       available = !value
     },
@@ -81,9 +106,19 @@ export async function createAuthFixture() {
     },
     reset: async () => {
       await service.drainMail()
+      await tenants?.drainMail()
       assertSafeTestDatabase(uri, config.nodeEnv, database.connection.name)
       if (database.connection.host !== '127.0.0.1') throw new Error('Refusing non-loopback cleanup')
       await Promise.all([
+        ...(tenantModels
+          ? [
+              tenantModels.Organization.deleteMany({}),
+              tenantModels.Workspace.deleteMany({}),
+              tenantModels.OrganizationMembership.deleteMany({}),
+              tenantModels.WorkspaceMembership.deleteMany({}),
+              tenantModels.Invitation.deleteMany({}),
+            ]
+          : []),
         models.User.deleteMany({}),
         models.Session.deleteMany({}),
         models.Verification.deleteMany({}),
@@ -96,6 +131,7 @@ export async function createAuthFixture() {
     },
     close: async () => {
       await service.drainMail()
+      await tenants?.drainMail()
       await database.close()
       await repl.stop()
     },

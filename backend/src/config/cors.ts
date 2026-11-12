@@ -17,7 +17,7 @@ export function createCorsOptions(config: AppConfig, credentialed = false): Cors
       callback(new ApiError(403, 'CORS_ORIGIN_DENIED', 'This request origin is not allowed.'))
     },
     credentials: credentialed,
-    methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Accept', 'X-Request-ID', 'X-CSRF-Token'],
     exposedHeaders: ['X-Request-ID', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
     maxAge: 600,

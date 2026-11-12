@@ -8,7 +8,7 @@ describe('implemented OpenAPI contract', () => {
   it('validates OpenAPI 3 structure and local references without fetching external resources', async () => {
     const document = await SwaggerParser.validate('openapi.json', { resolve: { external: false } })
     expect('openapi' in document && document.openapi).toBe('3.0.3')
-    expect(Object.keys(document.paths ?? {})).toHaveLength(17)
+    expect(Object.keys(document.paths ?? {})).toHaveLength(32)
     expect(Object.keys(document.paths ?? {})).not.toContain('/api/v1/workspaces')
   })
   it('documents each operational method/path and the preserved Phase 1 envelope', async () => {

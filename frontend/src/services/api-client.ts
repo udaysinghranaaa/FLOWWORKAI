@@ -19,7 +19,7 @@ export class ApiClientError extends Error {
   }
 }
 interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
   signal?: AbortSignal
   refresh?: boolean
@@ -92,7 +92,7 @@ export function createApiClient(
     return csrfPromise
   }
   async function perform<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const unsafe = options.method === 'POST'
+    const unsafe = options.method !== undefined && options.method !== 'GET'
     try {
       return await raw<T>(path, options, unsafe ? await csrf() : undefined)
     } catch (error) {

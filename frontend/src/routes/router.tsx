@@ -15,6 +15,19 @@ const Onboarding = lazy(() => import('@/features/auth/onboarding-page'))
 const Verification = lazy(() => import('@/features/auth/verification-page'))
 const ProtectedRoute = lazy(() => import('@/features/auth/protected-route'))
 const Account = lazy(() => import('@/features/auth/account-page'))
+const CompanyOnboarding = lazy(() => import('@/features/onboarding/company-onboarding'))
+const WorkspaceList = lazy(() => import('@/features/workspaces/workspace-list'))
+const TenantShell = lazy(() => import('@/features/workspaces/tenant-shell'))
+const WorkspaceOverview = lazy(() => import('@/features/workspaces/workspace-overview'))
+const TenantTeam = lazy(() => import('@/features/team/tenant-team'))
+const CompanyTeam = lazy(() =>
+  import('@/features/team/tenant-team').then((m) => ({ default: m.OrganizationTeam })),
+)
+const WorkspaceSettings = lazy(() => import('@/features/workspaces/tenant-settings'))
+const CompanySettings = lazy(() =>
+  import('@/features/workspaces/tenant-settings').then((m) => ({ default: m.CompanySettings })),
+)
+const InvitationPage = lazy(() => import('@/features/invitations/invitation-page'))
 const Dashboard = lazy(() => import('@/features/dashboard/dashboard-page'))
 const Workspaces = lazy(() => import('@/features/workspaces/workspaces-page'))
 const Projects = lazy(() => import('@/features/projects/projects-page'))
@@ -64,7 +77,28 @@ export const router = createBrowserRouter([
       { path: '/verify-email', element: <Verification /> },
       { path: '/onboarding', element: <Onboarding /> },
       { path: paths.workspaces, element: <Workspaces /> },
-      { element: <ProtectedRoute />, children: [{ path: '/account', element: <Account /> }] },
+      { path: '/app/invitations', element: <InvitationPage /> },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: '/account', element: <Account /> },
+          { path: '/app', element: <WorkspaceList /> },
+          { path: '/app/workspaces', element: <WorkspaceList /> },
+          { path: '/app/onboarding', element: <CompanyOnboarding /> },
+          { path: '/app/organizations/:orgId/settings', element: <CompanySettings /> },
+          { path: '/app/organizations/:orgId/team', element: <CompanyTeam /> },
+          {
+            path: '/app/w/:workspaceId',
+            element: <TenantShell />,
+            children: [
+              { index: true, element: <Navigate to="overview" replace /> },
+              { path: 'overview', element: <WorkspaceOverview /> },
+              { path: 'team', element: <TenantTeam /> },
+              { path: 'settings', element: <WorkspaceSettings /> },
+            ],
+          },
+        ],
+      },
       {
         path: paths.workspace,
         element: <AppShell />,

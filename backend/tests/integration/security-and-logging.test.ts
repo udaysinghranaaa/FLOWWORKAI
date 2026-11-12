@@ -57,7 +57,9 @@ describe('request IDs, security middleware and logging', () => {
       .set('Access-Control-Request-Method', 'POST')
       .set('Access-Control-Request-Headers', 'content-type,x-request-id')
       .expect(204)
-    expect(preflight.headers['access-control-allow-methods']).toBe('GET,HEAD,POST,OPTIONS')
+    expect(preflight.headers['access-control-allow-methods']).toBe(
+      'GET,HEAD,POST,PATCH,DELETE,OPTIONS',
+    )
     expect(preflight.headers['x-request-id']).toBeTruthy()
     expect(preflight.headers['x-content-type-options']).toBe('nosniff')
   })

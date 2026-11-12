@@ -3,6 +3,9 @@ export interface ErrorDetail {
   message: string
 }
 export type ErrorCode =
+  | 'FORBIDDEN'
+  | 'CONFLICT'
+  | 'INVITATION_UNAVAILABLE'
   | 'UNAUTHENTICATED'
   | 'INVALID_CREDENTIALS'
   | 'EMAIL_VERIFICATION_REQUIRED'

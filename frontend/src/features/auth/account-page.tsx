@@ -4,9 +4,17 @@ import { Brand } from '@/components/layout/app-shell'
 import { Badge, Card } from '@/components/ui/display'
 import { Button } from '@/components/ui/button'
 import { useSession, useSignOut } from './use-session'
+import { useQuery } from '@tanstack/react-query'
+import { tenantApi } from '@/services/tenant-api'
 
 export default function AccountPage() {
   const { data: user } = useSession()
+  const workspaces = useQuery({
+    queryKey: ['tenant', user?.id, 'account-workspaces'],
+    queryFn: () => tenantApi.workspaces(),
+    enabled: !!user,
+    retry: false,
+  })
   const signOut = useSignOut(),
     navigate = useNavigate()
   const [notice, setNotice] = useState(''),
@@ -32,11 +40,42 @@ export default function AccountPage() {
         <h1>Welcome, {user.name}.</h1>
         <p>{user.email}</p>
         <p className="muted">Email verified · {user.accountStatus} account</p>
-        <h2>Your workspace comes next.</h2>
-        <p className="muted">
-          You have a real account. Company setup and workspace membership arrive in Phase 5; no
-          workspace or subscription has been created.
-        </p>
+        <h2>Your company, connected.</h2>
+        {workspaces.isPending ? (
+          <p role="status">Loading your workspaces…</p>
+        ) : workspaces.isError ? (
+          <p role="alert">
+            Could not load your workspaces.{' '}
+            <Button
+              onClick={() => {
+                void workspaces.refetch()
+              }}
+            >
+              Retry
+            </Button>
+          </p>
+        ) : workspaces.data.items.length ? (
+          <div className="tenant-actions">
+            {workspaces.data.items.map((workspace) => (
+              <Button key={workspace.id} asChild variant="primary">
+                <Link to={`/app/w/${workspace.id}/overview`}>
+                  {workspace.organizationName} · {workspace.name}
+                </Link>
+              </Button>
+            ))}
+            <Link to="/app/workspaces">All workspaces</Link>
+          </div>
+        ) : (
+          <>
+            <p className="muted">
+              Your account is ready; no workspace or subscription has been created automatically.
+              Set up your company or accept a private team invitation.
+            </p>
+            <Button asChild variant="primary">
+              <Link to="/app/onboarding">Create your company</Link>
+            </Button>
+          </>
+        )}
         <Button asChild variant="primary">
           <Link to="/w/studio/dashboard">Explore Demo Workspace</Link>
         </Button>

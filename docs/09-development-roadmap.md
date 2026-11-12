@@ -1,6 +1,6 @@
 # 09 · Development roadmap
 
-**Current state: Phases 1–3 delivered; Phase 4 identity implementation has isolated verification with live Atlas acceptance blocked by connection-string parsing. Phase 5 has not started.** See [Phase 4 report](phase-4-final-report.md) for actual checks and remaining acceptance. Each phase still requires explicit user instruction; this status update does not authorize the next phase.
+**Current state: Phases 1?4 preserved; Phase 5 organizations/workspaces/RBAC/invitations implemented locally. Live rollout remains pending private credential rotation and explicit tenant schema installation.** See [Phase 5 report](phase-5-final-report.md) for executed checks. Historical milestones below remain plans; Phase 6 requires new authorization.
 
 The milestones below retain the original planning history; their test/file lists are targets rather than automatic claims of execution. Root frontend/backend now exist; use the phase-specific reports for their implemented scope. Phase 4 persists global identity only and creates no tenant records. Multi-tenant fixtures and authorization gates apply before Phase 5 business persistence. Security is built into each phase; Phase 12 verifies accumulated controls rather than introducing tenant security at the end.
 

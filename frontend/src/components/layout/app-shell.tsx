@@ -64,7 +64,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
     </Link>
   )
 }
-function ThemeMenu() {
+export function ThemeMenu() {
   const { theme, setTheme } = useUIStore()
   const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
   return (

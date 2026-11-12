@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router'
@@ -9,6 +9,14 @@ import ProtectedRoute from '@/features/auth/protected-route'
 import AccountPage from '@/features/auth/account-page'
 import VerificationPage from '@/features/auth/verification-page'
 
+import { tenantApi } from '@/services/tenant-api'
+beforeEach(() => {
+  vi.spyOn(tenantApi, 'workspaces').mockResolvedValue({
+    items: [],
+    nextCursor: null,
+    hasMore: false,
+  })
+})
 const user: AuthUser = {
   id: 'test-identity',
   name: 'Real Test Identity',
@@ -65,7 +73,7 @@ describe('real identity UI and guarded session lifecycle', () => {
     )
     await interaction.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByRole('heading', { name: `Welcome, ${user.name}.` })).toBeVisible()
-    expect(screen.getByText(/no workspace or subscription has been created/)).toBeVisible()
+    expect(await screen.findByText(/no workspace or subscription has been created/)).toBeVisible()
     expect(screen.getByRole('link', { name: 'Explore Demo Workspace' })).toHaveAttribute(
       'href',
       '/w/studio/dashboard',

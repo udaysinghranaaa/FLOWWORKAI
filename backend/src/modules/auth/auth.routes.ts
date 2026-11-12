@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import type { TenantService } from '../organizations/tenant.service.js'
 import { rateLimit } from 'express-rate-limit'
 import type { AuthConfig } from '../../config/auth-env.js'
 import type { AuthService } from './auth.service.js'
@@ -20,6 +21,7 @@ import {
 } from './auth.schema.js'
 
 export interface AuthRuntime {
+  tenants?: TenantService
   service: AuthService
   config: AuthConfig
   isReady: () => boolean
