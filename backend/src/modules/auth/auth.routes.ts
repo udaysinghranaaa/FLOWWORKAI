@@ -1,3 +1,4 @@
+import type { WorkService } from '../work-management/work.service.js'
 import { Router } from 'express'
 import type { TenantService } from '../organizations/tenant.service.js'
 import { rateLimit } from 'express-rate-limit'
@@ -21,6 +22,7 @@ import {
 } from './auth.schema.js'
 
 export interface AuthRuntime {
+  work?: WorkService
   tenants?: TenantService
   service: AuthService
   config: AuthConfig

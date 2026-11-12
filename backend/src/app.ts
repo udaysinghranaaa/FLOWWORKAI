@@ -80,7 +80,7 @@ export function createApp(options: AppOptions) {
         lifecycle,
         options.now,
         options.auth?.isReady,
-        options.auth?.tenants ? 5 : options.auth ? 4 : 3,
+        options.auth?.work ? 6 : options.auth?.tenants ? 5 : options.auth ? 4 : 3,
       ),
       options.exampleService ?? createExampleService(),
       options.auth,

@@ -28,3 +28,18 @@ export const workspacePermissionMatrix: Record<WorkspaceRole, readonly Permissio
   MEMBER: ['workspace.read', 'workspace.members.read'],
   VIEWER: ['workspace.read', 'workspace.members.read'],
 }
+
+/** Phase 6 project capabilities narrow existing live workspace authority. */
+export function projectCapabilities(
+  workspaceRole: WorkspaceRole,
+  grant: string | undefined,
+  owner = false,
+) {
+  const admin = workspaceRole === 'OWNER' || workspaceRole === 'ADMIN'
+  const readable = admin || !!grant || owner
+  const manage = admin || (workspaceRole === 'MANAGER' && (grant === 'MANAGER' || owner))
+  const contribute = manage || (workspaceRole !== 'VIEWER' && grant === 'CONTRIBUTOR')
+  return { read: readable, manage, contribute, moderate: manage }
+}
+export const canCreateProject = (role: WorkspaceRole) =>
+  ['OWNER', 'ADMIN', 'MANAGER'].includes(role)

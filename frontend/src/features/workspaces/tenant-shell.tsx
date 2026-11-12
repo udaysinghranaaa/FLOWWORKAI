@@ -78,6 +78,9 @@ export default function TenantShell() {
           </Select>
           <nav aria-label="Authenticated workspace navigation">
             <NavLink to={`${base}/overview`}>Overview</NavLink>
+            <NavLink to={`${base}/projects`}>Projects</NavLink>
+            <NavLink to={`${base}/tasks`}>Tasks</NavLink>
+            <NavLink to={`${base}/my-tasks`}>My Tasks</NavLink>
             <NavLink to={`${base}/team`}>Team</NavLink>
             <NavLink to={`${base}/settings`}>Workspace settings</NavLink>
             <Link to={`/app/organizations/${scope.organization.id}/settings`}>

@@ -1,3 +1,10 @@
+import { assertIsolatedSchemaTarget } from './lib/test-schema-target.js'
+import {
+  createWorkModels,
+  ensureWorkIndexes,
+  workIndexesReady,
+} from './modules/work-management/work.models.js'
+import { createWorkService } from './modules/work-management/work.service.js'
 import { parseEnv, ConfigurationError } from './config/env.js'
 import { createLogger } from './lib/logger.js'
 import { createApp } from './app.js'
@@ -26,6 +33,7 @@ async function main(): Promise<void> {
   const database = await connectDatabase(authConfig.mongoUri, logger)
   const lifecycle: LifecycleState = { ready: false, draining: false }
   try {
+    if (config.nodeEnv === 'test') assertIsolatedSchemaTarget(database.connection)
     const models = createAuthModels(database.connection)
     await ensureAuthIndexes(models)
     const tenantModels = createTenantModels(database.connection)
@@ -45,6 +53,21 @@ async function main(): Promise<void> {
       logger,
       webOrigin: authConfig.webOrigin,
     })
+    const workModels = createWorkModels(database.connection)
+    if (config.nodeEnv === 'test') await ensureWorkIndexes(workModels)
+    else if (!(await workIndexesReady(workModels))) {
+      logger.error(
+        { code: 'WORK_SCHEMA_NOT_READY' },
+        'Phase 6 schema requires separately approved initialization.',
+      )
+      throw new Error('Work schema is not initialized.')
+    }
+    const work = createWorkService({
+      models: workModels,
+      tenants,
+      tenantModels: tenantModels!,
+      authModels: models,
+    })
     const service = await createAuthService({
       models,
       connection: database.connection,
@@ -56,7 +79,7 @@ async function main(): Promise<void> {
       config,
       logger,
       lifecycle,
-      auth: { service, config: authConfig, isReady: database.isReady, tenants },
+      auth: { service, config: authConfig, isReady: database.isReady, tenants, work },
     })
     const running = await startHttpServer({
       app,

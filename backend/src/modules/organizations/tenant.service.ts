@@ -956,12 +956,17 @@ export function createTenantService({
     actor: AuthContext,
     workspaceId: string,
     permission: Permission = 'workspace.read',
+    session?: ClientSession,
   ) {
-    const parent = await models.Workspace.findOne({ _id: workspaceId }).select('organizationId')
+    const parent = await models.Workspace.findOne({ _id: workspaceId })
+      .select('organizationId')
+      .session(session ?? null)
     if (!parent) throw hidden()
-    return authorize(actor, String(parent.organizationId), workspaceId, permission)
+    return authorize(actor, String(parent.organizationId), workspaceId, permission, session)
   }
   return {
+    write,
+    guardOrganization,
     createOrganization,
     organizations,
     organization,

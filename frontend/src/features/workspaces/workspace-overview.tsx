@@ -1,3 +1,4 @@
+import { RealMetrics } from '@/features/work-management/work-pages'
 import { Link } from 'react-router'
 import { Card, Badge } from '@/components/ui/display'
 import { Button } from '@/components/ui/button'
@@ -31,11 +32,12 @@ export default function WorkspaceOverview() {
           </Card>
         )}
       </div>
+      <RealMetrics />
       <Card>
-        <h2>A place for your next project</h2>
+        <h2>Explore the product preview</h2>
         <p className="muted">
-          Projects, tasks, support, analytics and AI will be available in later phases. No sample
-          metrics are presented as company data.
+          Projects and tasks above use your authorized workspace. Support, advanced analytics and AI
+          remain future phases. The separate public demo uses fictional records.
         </p>
         <Button asChild>
           <Link to="/w/studio/projects">Explore a labeled demo preview</Link>

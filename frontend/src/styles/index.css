@@ -5255,3 +5255,121 @@ tbody tr:hover {
     padding: 22px;
   }
 }
+/* Authenticated project and task surfaces reuse existing theme and Kanban tokens. */
+.work-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.work-filters {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.work-filters .field {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.work-filters .input {
+  width: 100%;
+}
+.work-project-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 24px;
+}
+.work-project-card h2 {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.work-project-card progress {
+  width: 100%;
+  height: 7px;
+  accent-color: var(--primary);
+}
+.work-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.work-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 4.5em;
+}
+.work-description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.work-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.work-activity,
+.work-comments {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+.work-activity > li,
+.work-comments > li {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.work-kanban {
+  overflow-x: auto;
+  max-width: 100%;
+  grid-template-columns: repeat(var(--columns), minmax(240px, 1fr));
+}
+.work-kanban .kanban-card {
+  display: grid;
+  gap: 12px;
+}
+.work-kanban .kanban-column {
+  min-width: 0;
+}
+.work-kanban button:disabled {
+  cursor: not-allowed;
+}
+@media (max-width: 760px) {
+  .work-heading {
+    align-items: start;
+  }
+  .work-filters {
+    padding: 14px;
+  }
+  .work-filters .field {
+    flex-basis: calc(50% - 12px);
+  }
+  .work-tabs .btn {
+    flex: 1 1 40%;
+  }
+}
+
+.tenant-page h1,
+.work-heading > div,
+.work-project-card h2,
+.work-kanban .task-card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tenant-page progress {
+  width: 100%;
+  height: 7px;
+  accent-color: var(--primary);
+}

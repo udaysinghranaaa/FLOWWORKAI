@@ -1,6 +1,6 @@
 # 03 · System architecture
 
-Status: historical Phase 1 topology, with HTTP/auth/tenant modules now implemented through Phase 5. See the Phase 5 runtime addendum and architecture for current behavior; worker, sockets, storage and AI sections remain plans. No production deployment is claimed.
+Status: historical Phase 1 topology with implemented HTTP, authentication, tenancy and Phase 6 work-management modules. Current phase guides and ADRs describe runtime behavior; sockets, workers, storage and AI remain future plans. No live deployment is claimed.
 
 ## Boundaries and stack
 
@@ -194,3 +194,9 @@ A modular monolith provides local transactions, simpler debugging, lower operati
 ## Phase 5 runtime addendum
 
 The implemented shared-database tenant parent is Organization, containing Workspace. Current database membership authorizes every tenant endpoint; writes reauthorize in MongoDB transactions and serialize membership changes through an organization guard. The frontend real `/app` shell has user/workspace-scoped query state; the public demo remains independent. See [Phase 5 architecture](phase-5-multi-tenant-architecture.md) for six runtime diagrams and rollout constraints. Live business acceptance is pending credential rotation and additive tenant schema initialization. No projects/tasks, sockets, uploads or AI persistence has been added.
+
+## Phase 6 implemented work management
+
+The new Phase 6 brief authorizes projects/tasks and stops before Phase 7. Real projects and tasks live below `/app/w/:workspaceId/projects`, with workspace `/tasks` and `/my-tasks` routes and real overview aggregates. The public `/w` demo remains independent. See [Phase 6 architecture](phase-6-architecture.md), [API inventory](phase-6-api-inventory.md), [ADR 011](architecture-decisions/011-project-grants-and-task-ordering.md) and [final report](phase-6-final-report.md).
+
+No new dependency was introduced. Current database identity/membership checks, CSRF, optional DNS and cookie/session behavior remain in use. Credential rotation and Phase 5 live schema/onboarding remain pending; Phase 6 live schema requires separate approval. `npm.cmd run schema:work` in backend prints a static read-only plan without connecting. Do not run apply flags until approval and environment checks are complete.

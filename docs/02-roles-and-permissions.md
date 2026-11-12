@@ -1,6 +1,6 @@
 # 02 · Roles and permissions
 
-Status: historical Phase 1 policy with an implemented Phase 5 override below. The Phase 5 architecture and ADR 010 govern current organization/workspace endpoints; project/client planning remains future work.
+Status: historical Phase 1 policy with implemented Phase 5 tenancy and Phase 6 project-capability overrides below. ADRs 010/011 govern current endpoints; client-specific policy remains future scope.
 
 ## Evaluation model
 
@@ -78,3 +78,7 @@ Platform operators are separate infrastructure identities with MFA and least pri
 ## Implemented Phase 5 policy override
 
 The latest brief introduces Organization above Workspace. The executable organization roles are OWNER/ADMIN/MEMBER; workspace roles are OWNER/ADMIN/MANAGER/MEMBER/VIEWER. Company OWNER/ADMIN explicitly inherit workspace administration, while ordinary company members need current workspace membership. Founding ownership is immutable and cannot be granted, demoted or removed; transfer and multiple owners are deferred. Manager is read-only for implemented team/settings operations. Client/project roles remain future plans. [ADR 010](architecture-decisions/010-organization-tenancy-and-rbac.md) and the [Phase 5 matrix](phase-5-multi-tenant-architecture.md) govern implemented endpoints over historical planning tables.
+
+## Phase 6 project capability policy
+
+The [ADR 011 policy](architecture-decisions/011-project-grants-and-task-ordering.md) extends current workspace roles with scoped MANAGER/CONTRIBUTOR/VIEWER project grants. OWNER/ADMIN administer their workspaces' projects; workspace MANAGER requires a manager grant or project ownership to administer a project. MEMBER requires a contributor grant to mutate tasks. VIEWER is read-only even if an old grant is stronger. Every operation still requires current active company/workspace membership and identity. Project ownership can transfer to an eligible administrator; the immutable founding organization/workspace ownership policy is unchanged. See the [Phase 6 report](phase-6-final-report.md) for the matrix and tests.

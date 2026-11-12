@@ -14,6 +14,14 @@ const Auth = lazy(() => import('@/features/auth/auth-page'))
 const Onboarding = lazy(() => import('@/features/auth/onboarding-page'))
 const Verification = lazy(() => import('@/features/auth/verification-page'))
 const ProtectedRoute = lazy(() => import('@/features/auth/protected-route'))
+const RealProjects = lazy(() => import('@/features/work-management/work-pages'))
+const RealProjectDetail = lazy(() =>
+  import('@/features/work-management/work-pages').then((m) => ({ default: m.RealProjectDetail })),
+)
+const RealTasks = lazy(() =>
+  import('@/features/work-management/work-pages').then((m) => ({ default: m.RealTasks })),
+)
+const RealTaskDetail = lazy(() => import('@/features/work-management/work-task-detail'))
 const Account = lazy(() => import('@/features/auth/account-page'))
 const CompanyOnboarding = lazy(() => import('@/features/onboarding/company-onboarding'))
 const WorkspaceList = lazy(() => import('@/features/workspaces/workspace-list'))
@@ -93,6 +101,11 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="overview" replace /> },
               { path: 'overview', element: <WorkspaceOverview /> },
+              { path: 'projects', element: <RealProjects /> },
+              { path: 'projects/:projectId', element: <RealProjectDetail /> },
+              { path: 'projects/:projectId/tasks/:taskId', element: <RealTaskDetail /> },
+              { path: 'tasks', element: <RealTasks /> },
+              { path: 'my-tasks', element: <RealTasks mine /> },
               { path: 'team', element: <TenantTeam /> },
               { path: 'settings', element: <WorkspaceSettings /> },
             ],

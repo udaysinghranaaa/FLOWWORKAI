@@ -1,3 +1,4 @@
+import { createWorkRouter } from '../modules/work-management/work.routes.js'
 import { Router } from 'express'
 import type { AppConfig } from '../config/env.js'
 import { createHealthRouter } from '../modules/health/health.routes.js'
@@ -16,6 +17,7 @@ export function createApiRouter(
   const router = Router({ caseSensitive: true, strict: true })
   router.use('/health', createHealthRouter(healthService))
   if (auth) router.use('/auth', createAuthRouter(auth, config.frontendOrigins))
+  if (auth?.work) router.use(createWorkRouter(auth, auth.work, config.frontendOrigins))
   if (auth?.tenants) router.use(createTenantRouter(auth, auth.tenants, config.frontendOrigins))
   if (config.nodeEnv !== 'production') router.use('/example', createExampleRouter(exampleService))
   return router

@@ -1,10 +1,10 @@
 # FlowWork AI engineering rules
 
-Current authorized scope: **Phase 5 organizations, workspaces, memberships, invitations and backend RBAC**, explicitly requested after Phases 1–4. Preserve authentication, DNS, the premium frontend and separate public demo. Preserve backend/.env and never print secrets or mail tokens. Previously disclosed credentials still require private rotation; perform new data writes/tests only in generated isolated databases until rotation is confirmed. No Atlas test seeding/cleanup. Do not implement Phase 6 projects/tasks, Socket.IO, AI/RAG or payments. Stop after Phase 5.
+Current authorized scope: **Phase 6 projects, tasks, project memberships, persistent Kanban, assignments, subtasks, comments, activity, My Tasks and workspace metrics**, explicitly authorized on November 12, 2026. Preserve Phases 1-5 and the separate demo. Keep backend/.env untouched and secrets private. Rotation remains unconfirmed; develop/test only on generated isolated databases. Phase 5 and Phase 6 live schema installation require separate intended-environment approval. No Atlas seeding/cleanup or business writes. Do not start Phase 7.
 
 Phase 2 frontend and Phase 3 foundation remain preserved. Phase 4 database identity, JWT cookies, live sessions, verification/reset, CSRF and optional same-process DNS configuration remain authoritative for authentication. Phase 5 is explicitly authorized by the latest brief and adds a company parent, workspace memberships, invitations and current database RBAC. Read docs/phase-5-multi-tenant-architecture.md, docs/phase-5-final-report.md and ADR 010 for current policy. Historical phase reports remain unchanged.
 
-Mandatory folder convention: React/dependencies in root frontend/ and Express/dependencies in root backend/. Never create nested frontend/backend or apps/web/api. Preserve backend/.env, DNS configuration and ignore rules. Rotation is still required; no Atlas business writes or schema initialization until privately completed. Live connectivity is not tenant acceptance. Stop after Phase 5.
+Mandatory folder convention: React/dependencies in root frontend/ and Express/dependencies in root backend/. Never create nested frontend/backend or apps/web/api. Preserve backend/.env, DNS configuration and ignore rules. Rotation is still required; no Atlas business writes or schema initialization until privately completed. Live connectivity is not tenant acceptance. Stop after Phase 6.
 
 1. Read the documentation and repository structure before changing files. Start with README.md, docs/01-product-requirements.md and the relevant architecture documents.
 2. Implement only the requested phase; distinguish planned behavior from implemented behavior.
@@ -26,3 +26,5 @@ Mandatory folder convention: React/dependencies in root frontend/ and Express/de
 18. Require approval for destructive or sensitive changes. Complete reversible preparation before requesting approval; honor authorization already given in the session.
 
 Use the planned stack in README.md. Do not add microservices, Kubernetes, new infrastructure or dependencies without a documented need. Documentation examples are contracts, not claims of executable implementation.
+
+Phase 6 current decisions: read docs/phase-6-architecture.md, docs/phase-6-final-report.md and ADR 011. Work models use existing tenant transaction guards. Keep explicit project role ceilings, plain-text comments, atomic activities, bounded board pagination and the separate demo. Schema plan is read-only by default; do not apply it to Atlas without separate approval for the intended environment.

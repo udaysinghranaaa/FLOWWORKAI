@@ -449,3 +449,245 @@ test('Phase 5 invitation dialog is keyboard accessible in light/dark themes and 
   await page.getByRole('button', { name: 'Change theme' }).click()
   await page.getByRole('menuitem', { name: 'System theme' }).click()
 })
+
+async function realProject(
+  page: Page,
+  ws: string,
+  name = 'Solar Delivery',
+  slug = 'solar-delivery',
+) {
+  await page.goto(`/app/w/${ws}/projects`)
+  await page.getByRole('button', { name: 'Create project', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create project' })
+  await dialog.getByLabel('Project name', { exact: true }).fill(name)
+  await dialog.getByLabel('Project key', { exact: true }).fill(slug)
+  await dialog
+    .getByLabel('Description', { exact: true })
+    .fill('A real isolated project delivery plan.')
+  await dialog.getByRole('button', { name: 'Create project', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.getByRole('link', { name, exact: true }).click()
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+  return page.url().match(/\/projects\/([^/]+)/)![1]!
+}
+async function realTask(page: Page, title: string, assign = false) {
+  await page.getByRole('button', { name: 'Create task', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Create task' })
+  await dialog.getByLabel('Task title', { exact: true }).fill(title)
+  await dialog.getByLabel('Description', { exact: true }).fill('Persisted task details.')
+  if (assign)
+    await dialog.getByLabel('Assignee', { exact: true }).selectOption({ label: 'Browser Identity' })
+  await dialog.getByRole('button', { name: 'Create task', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('link', { name: title, exact: true })).toBeVisible()
+}
+test('Phase 6 real projects, assignments, tasks, subtasks, comments, dashboard and reload persist', async ({
+  page,
+}) => {
+  test.setTimeout(120000)
+  const recipient = await authenticated(page)
+  const ws = await createCompany(page, 'Phase Six Company', 'phase-six-company')
+  const projectId = await realProject(page, ws)
+  await realTask(page, 'Launch delivery', true)
+  await page.getByRole('link', { name: 'Launch delivery', exact: true }).click()
+  const taskPath = new URL(page.url()).pathname
+  await expect(page.getByRole('heading', { name: 'Launch delivery', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit task', exact: true }).click()
+  const edit = page.getByRole('dialog', { name: 'Edit task' })
+  await edit.getByLabel('Priority', { exact: true }).selectOption('urgent')
+  await edit.getByLabel('Due date', { exact: true }).fill('2026-12-01')
+  await edit.getByLabel('Labels (comma separated)').fill('launch, review')
+  await edit.getByRole('button', { name: 'Save task', exact: true }).click()
+  await expect(edit).toHaveCount(0)
+  await page.getByLabel('Add a comment', { exact: true }).fill('<script>Plain text review</script>')
+  await page.getByRole('button', { name: 'Post comment', exact: true }).click()
+  await expect(page.getByText('<script>Plain text review</script>', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit comment', exact: true }).click()
+  await page.getByLabel('Comment text', { exact: true }).fill('Reviewed and ready.')
+  await page.getByRole('button', { name: 'Save comment', exact: true }).click()
+  await expect(page.getByText('Reviewed and ready.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Add subtask', exact: true }).click()
+  await page
+    .getByRole('dialog')
+    .getByLabel('Task title', { exact: true })
+    .fill('Check launch details')
+  await page.getByRole('dialog').getByLabel('Task status', { exact: true }).selectOption('done')
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Create subtask', exact: true })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: 'Subtasks - 1 / 1 completed', exact: true }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Reviewed and ready.', { exact: true })).toBeVisible()
+  await expect(page.getByText('comment added', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Back to Solar Delivery', exact: true }).click()
+  await realTask(page, 'Second delivery')
+  await page.getByRole('button', { name: 'Kanban board', exact: true }).click()
+  await page
+    .getByLabel('Move Launch delivery to status', { exact: true })
+    .selectOption('in_progress')
+  await expect(page.getByRole('status').filter({ hasText: 'Task saved' })).toContainText(
+    'Task saved in In Progress',
+  )
+  await page.reload()
+  await page.getByRole('button', { name: 'Kanban board', exact: true }).click()
+  await expect(page.getByLabel('Move Launch delivery to status', { exact: true })).toHaveValue(
+    'in_progress',
+  )
+  await page.getByLabel('Move Launch delivery to status', { exact: true }).selectOption('done')
+  await expect(page.getByRole('status').filter({ hasText: 'Task saved' })).toContainText(
+    'Task saved in Done',
+  )
+  await page.getByRole('link', { name: 'My Tasks', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Launch delivery', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Overview', exact: true }).click()
+  await expect(
+    page
+      .getByRole('heading', { name: 'Total tasks', exact: true })
+      .locator('..')
+      .getByText('3', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page
+      .getByRole('heading', { name: 'Completed tasks', exact: true })
+      .locator('..')
+      .getByText('2', { exact: true }),
+  ).toBeVisible()
+  await page.goto('/account')
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await login(page, recipient)
+  await page.goto(taskPath)
+  await expect(page.getByRole('heading', { name: 'Launch delivery', exact: true })).toBeVisible()
+  await page.goto(`/app/w/${ws}/projects/${projectId}`)
+  await page.getByRole('button', { name: 'Archive project', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Restore project', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create task', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Restore project', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Launch delivery', exact: true })).toBeVisible()
+})
+test('Phase 6 viewer project grants remain read-only and another workspace is concealed', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000)
+  await authenticated(page)
+  const ws = await createCompany(page, 'Phase Six Company', 'phase-six-company')
+  const p = await realProject(page, ws)
+  await realTask(page, 'Protected delivery')
+  const org = (await tenantRequest(page, `/workspaces/${ws}`)).body.data.organization.id as string
+  const viewerContext = await browser.newContext(),
+    viewer = await viewerContext.newPage()
+  try {
+    const recipient = await authenticated(viewer)
+    const invite = await tenantRequest(page, `/organizations/${org}/invitations`, 'POST', {
+      email: recipient,
+      organizationRole: 'MEMBER',
+      targets: [{ workspaceId: ws, role: 'VIEWER' }],
+    })
+    expect(invite.status).toBe(201)
+    await viewer.goto(await capturedLink(recipient, 'invitation'))
+    await viewer.getByRole('button', { name: 'Accept invitation', exact: true }).click()
+    await expect(
+      viewer.getByRole('heading', { name: 'Phase Six Company workspace', exact: true }),
+    ).toBeVisible()
+    const userId = (await tenantRequest(viewer, '/auth/me')).body.data.user.id as string
+    const current = await tenantRequest(page, `/workspaces/${ws}/projects/${p}`)
+    expect(
+      (
+        await tenantRequest(page, `/workspaces/${ws}/projects/${p}/members`, 'POST', {
+          userId,
+          role: 'VIEWER',
+          version: current.body.data.version,
+        })
+      ).status,
+    ).toBe(200)
+    await viewer.goto(`/app/w/${ws}/projects/${p}`)
+    await expect(viewer.getByRole('heading', { name: 'Solar Delivery', exact: true })).toBeVisible()
+    await expect(viewer.getByRole('button', { name: 'Create task', exact: true })).toHaveCount(0)
+    await expect(viewer.getByRole('button', { name: 'Edit project', exact: true })).toHaveCount(0)
+    expect(
+      (
+        await tenantRequest(viewer, `/workspaces/${ws}/projects/${p}/tasks`, 'POST', {
+          title: 'Forged write',
+          creationKey: randomUUID(),
+        })
+      ).status,
+    ).toBe(403)
+    await viewer.getByRole('button', { name: 'Kanban board', exact: true }).click()
+    await expect(
+      viewer.getByLabel('Move Protected delivery to status', { exact: true }),
+    ).toBeDisabled()
+    const secondWs = await createCompany(page, 'Private Agency', 'private-agency')
+    const privateProject = await realProject(page, secondWs, 'Private delivery', 'private-delivery')
+    expect(
+      (await tenantRequest(viewer, `/workspaces/${secondWs}/projects/${privateProject}`)).status,
+    ).toBe(404)
+    await viewer.goto(`/app/w/${secondWs}/projects/${privateProject}`)
+    await expect(
+      viewer.getByRole('heading', { name: 'Workspace access unavailable' }),
+    ).toBeVisible()
+    await expect(viewer.getByText('Private delivery', { exact: true })).toHaveCount(0)
+  } finally {
+    await viewerContext.close()
+  }
+})
+test('Phase 6 pointer ordering, keyboard alternatives, themes and accessibility use the real board', async ({
+  page,
+}) => {
+  test.setTimeout(120000)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await authenticated(page)
+  const ws = await createCompany(page, 'Accessible Delivery', 'accessible-delivery')
+  const projectId = await realProject(page, ws)
+  await realTask(page, 'First card')
+  await realTask(page, 'Second card')
+  await page.getByRole('button', { name: 'Kanban board', exact: true }).click()
+  const handle = page.getByRole('button', { name: 'Drag First card', exact: true })
+  const target = page.getByRole('region', { name: 'In Progress column', exact: true })
+  await handle.scrollIntoViewIfNeeded()
+  const start = await handle.boundingBox(),
+    end = await target.boundingBox()
+  if (!start || !end) throw new Error('Expected drag handle and destination bounds.')
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(start.x + start.width / 2 + 12, start.y + start.height / 2, { steps: 4 })
+  await page.mouse.move(end.x + end.width / 2, end.y + 100, { steps: 15 })
+  await page.mouse.up()
+  await expect(page.getByLabel('Move First card to status', { exact: true })).toHaveValue(
+    'in_progress',
+  )
+  await page.getByLabel('Move First card to status', { exact: true }).selectOption('todo')
+  await expect(page.getByRole('status').filter({ hasText: 'Task saved' })).toContainText(
+    'Task saved in Todo',
+  )
+  await page.getByRole('button', { name: 'Move First card up', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Task saved' })).toContainText(
+    'Task saved in Todo',
+  )
+  await page.reload()
+  await page.getByRole('button', { name: 'Kanban board', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Todo column', exact: true }).getByRole('link').first(),
+  ).toHaveText('First card')
+  for (const theme of ['Light', 'Dark']) {
+    await page.getByRole('button', { name: 'Change theme' }).click()
+    await page.getByRole('menuitem', { name: `${theme} theme` }).click()
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze()
+    expect(results.violations.map((v) => v.id)).toEqual([])
+  }
+  await page.getByRole('button', { name: 'Create task', exact: true }).click()
+  const modal = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(modal.violations.map((v) => v.id)).toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Create task', exact: true })).toBeFocused()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`/app/w/${ws}/projects/${projectId}`)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

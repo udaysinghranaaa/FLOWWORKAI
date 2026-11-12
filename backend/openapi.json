@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "FlowWork AI - Multi-tenant SaaS",
-    "version": "0.5.0",
-    "description": "Implemented Phases 3-5: infrastructure, database authentication, organizations, workspaces, memberships and invitations. Database authorization runs per request; invitations require matching verified email. No projects/tasks, AI or billing persistence."
+    "title": "FlowWork AI - Multi-tenant projects and tasks",
+    "version": "0.6.0",
+    "description": "Implemented Phases 3-5: infrastructure, database authentication, organizations, workspaces, memberships and invitations. Database authorization runs per request; invitations require matching verified email. No projects/tasks, AI or billing persistence. Phase 6 implements scoped projects, project grants, tasks, subtasks, comments, activity, persistent ordering and dashboard aggregates. Live schema rollout requires separate approval."
   },
   "servers": [
     {
@@ -32,6 +32,10 @@
     {
       "name": "Tenancy",
       "description": "Organization and workspace scopes are distinct. All unsafe requests require signed CSRF plus exact Origin."
+    },
+    {
+      "name": "Work management",
+      "description": "Current database workspace membership and project permissions required. All writes are transactional and recorded with server-owned activity."
     }
   ],
   "paths": {
@@ -6311,6 +6315,2762 @@
           }
         }
       }
+    },
+    "/api/v1/work-management/config": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkmanagementconfig",
+        "summary": "Read canonical statuses, labels, priorities and defaults",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkConfig"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojects",
+        "summary": "List accessible projects with real progress and member previews",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["planned", "active", "on_hold", "completed", "archived"]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["updatedAt", "createdAt"],
+              "default": "updatedAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkProjectPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Work management"],
+        "operationId": "workpostworkspacesworkspaceIdprojects",
+        "summary": "Create project, founding manager grant and activity atomically",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkProject"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkProjectCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectId",
+        "summary": "Read authorized project and capabilities",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkProject"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Work management"],
+        "operationId": "workpatchworkspacesworkspaceIdprojectsprojectId",
+        "summary": "Versioned edit, status transition, archive/restore or ownership transfer",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkProject"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkProjectUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/members": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdmembers",
+        "summary": "List project members with current assignment eligibility",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkMemberPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Work management"],
+        "operationId": "workpostworkspacesworkspaceIdprojectsprojectIdmembers",
+        "summary": "Add or change eligible project grant; workspace ceiling applies",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkMemberInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/members/{userId}": {
+      "delete": {
+        "tags": ["Work management"],
+        "operationId": "workdeleteworkspacesworkspaceIdprojectsprojectIdmembersuserId",
+        "summary": "Revoke non-owner project grant and unassign its tasks",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkVersion"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/tasks": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdtasks",
+        "summary": "List/filter authorized tasks; assigneeId=me is My Tasks",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["todo", "in_progress", "in_review", "done"]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "urgent"]
+            }
+          },
+          {
+            "name": "assigneeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "ObjectID, me or unassigned"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "parentTaskId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "dueBefore",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dueAfter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["false", "true", "all"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["updatedAt", "createdAt", "dueDate"],
+              "default": "updatedAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTaskPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdtasks",
+        "summary": "List project tasks with combined filters and stable cursors",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["todo", "in_progress", "in_review", "done"]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "urgent"]
+            }
+          },
+          {
+            "name": "assigneeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "ObjectID, me or unassigned"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "parentTaskId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "dueBefore",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dueAfter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["false", "true", "all"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["updatedAt", "createdAt", "dueDate"],
+              "default": "updatedAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTaskPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Work management"],
+        "operationId": "workpostworkspacesworkspaceIdprojectsprojectIdtasks",
+        "summary": "Create task or one-level subtask with activity atomically",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTask"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkTaskCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdtaskstaskId",
+        "summary": "Read task, reporter, assignment and subtask progress",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTask"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Work management"],
+        "operationId": "workpatchworkspacesworkspaceIdprojectsprojectIdtaskstaskId",
+        "summary": "Versioned task changes, assignment or archive/restore",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTask"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkTaskUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/move": {
+      "patch": {
+        "tags": ["Work management"],
+        "operationId": "workpatchworkspacesworkspaceIdprojectsprojectIdtaskstaskIdmove",
+        "summary": "Move/reorder against current board and task versions",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTask"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkMove"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/board": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdboard",
+        "summary": "Read bounded columns; status/cursor load more by position",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["todo", "in_progress", "in_review", "done"]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkBoard"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/subtasks": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdtaskstaskIdsubtasks",
+        "summary": "Read one-level subtasks",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["todo", "in_progress", "in_review", "done"]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "urgent"]
+            }
+          },
+          {
+            "name": "assigneeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "ObjectID, me or unassigned"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "parentTaskId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "dueBefore",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dueAfter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["false", "true", "all"],
+              "default": "false"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["updatedAt", "createdAt", "dueDate"],
+              "default": "updatedAt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTaskPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Work management"],
+        "operationId": "workpostworkspacesworkspaceIdprojectsprojectIdtaskstaskIdsubtasks",
+        "summary": "Create one-level same-project subtask",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkTask"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkSubtaskCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/comments": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdtaskstaskIdcomments",
+        "summary": "Read paginated plain-text comments",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkCommentPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Work management"],
+        "operationId": "workpostworkspacesworkspaceIdprojectsprojectIdtaskstaskIdcomments",
+        "summary": "Create own comment with atomic activity",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{24}$"
+                        }
+                      },
+                      "required": ["id"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkCommentCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/comments/{commentId}": {
+      "patch": {
+        "tags": ["Work management"],
+        "operationId": "workpatchworkspacesworkspaceIdprojectsprojectIdtaskstaskIdcommentscommentId",
+        "summary": "Author or project-moderator comment edit",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkCommentUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Work management"],
+        "operationId": "workdeleteworkspacesworkspaceIdprojectsprojectIdtaskstaskIdcommentscommentId",
+        "summary": "Author or project-moderator soft delete",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "updated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["updated"]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkVersion"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/activity": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdactivity",
+        "summary": "Read safe project activity",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkActivityPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/projects/{projectId}/tasks/{taskId}/activity": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIdprojectsprojectIdtaskstaskIdactivity",
+        "summary": "Read safe task activity",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 600
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkActivityPage"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/dashboard": {
+      "get": {
+        "tags": ["Work management"],
+        "operationId": "workgetworkspacesworkspaceIddashboard",
+        "summary": "Aggregate accessible active projects/tasks, assignments and deadlines",
+        "description": "Active verified identity and current database tenant/project permissions required. Unrelated resources are concealed with 404. Writes require exact Origin, signed CSRF and current version; UUID creation keys protect retries. Archived projects/tasks are read-only except authorized restoration. Member removal never expands access.",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed with safe DTO envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDashboard"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/TenantError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/TenantError401"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantError403"
+          },
+          "404": {
+            "$ref": "#/components/responses/TenantError404"
+          },
+          "409": {
+            "$ref": "#/components/responses/TenantError409"
+          },
+          "413": {
+            "$ref": "#/components/responses/TenantError413"
+          },
+          "415": {
+            "$ref": "#/components/responses/TenantError415"
+          },
+          "422": {
+            "$ref": "#/components/responses/TenantError422"
+          },
+          "429": {
+            "$ref": "#/components/responses/TenantError429"
+          },
+          "500": {
+            "$ref": "#/components/responses/TenantError500"
+          },
+          "503": {
+            "$ref": "#/components/responses/TenantError503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6408,7 +9168,7 @@
           },
           "phase": {
             "type": "integer",
-            "enum": [3, 4, 5]
+            "enum": [3, 4, 5, 6]
           },
           "timestamp": {
             "type": "string",
@@ -7086,6 +9846,1105 @@
           }
         },
         "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkConfig": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "projectStatuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "enum": ["planned", "active", "on_hold", "completed", "archived"]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": ["value", "label"]
+            }
+          },
+          "taskStatuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "enum": ["todo", "in_progress", "in_review", "done"]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": ["value", "label"]
+            }
+          },
+          "priorities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high", "urgent"]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": ["value", "label"]
+            }
+          },
+          "defaults": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "projectStatus": {
+                "type": "string",
+                "enum": ["planned", "active", "on_hold", "completed", "archived"]
+              },
+              "taskStatus": {
+                "type": "string",
+                "enum": ["todo", "in_progress", "in_review", "done"]
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "urgent"]
+              }
+            },
+            "required": ["projectStatus", "taskStatus", "priority"]
+          },
+          "colors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["projectStatuses", "taskStatuses", "priorities", "defaults", "colors"]
+      },
+      "WorkProject": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "organizationId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "createdBy": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "active", "on_hold", "completed", "archived"]
+          },
+          "previousStatus": {
+            "type": "string",
+            "enum": ["planned", "active", "on_hold", "completed", "archived"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "color": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "permissions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "read": {
+                "type": "boolean"
+              },
+              "manage": {
+                "type": "boolean"
+              },
+              "contribute": {
+                "type": "boolean"
+              },
+              "moderate": {
+                "type": "boolean"
+              }
+            },
+            "required": ["read", "manage", "contribute", "moderate"]
+          },
+          "totalTasks": {
+            "type": "integer"
+          },
+          "completedTasks": {
+            "type": "integer"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{24}$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name"]
+            }
+          },
+          "memberCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "workspaceId",
+          "name",
+          "slug",
+          "description",
+          "ownerUserId",
+          "createdBy",
+          "status",
+          "previousStatus",
+          "priority",
+          "color",
+          "startDate",
+          "dueDate",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "organizationId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "workspaceId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "projectId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "in_review", "done"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "parentTaskId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "position": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignee": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"],
+            "nullable": true
+          },
+          "assigneeEligible": {
+            "type": "boolean"
+          },
+          "reporter": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "permissions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "read": {
+                "type": "boolean"
+              },
+              "manage": {
+                "type": "boolean"
+              },
+              "contribute": {
+                "type": "boolean"
+              },
+              "moderate": {
+                "type": "boolean"
+              }
+            },
+            "required": ["read", "manage", "contribute", "moderate"]
+          },
+          "subtasks": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "done": {
+                "type": "integer"
+              }
+            },
+            "required": ["total", "done"]
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "projectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "workspaceId",
+          "projectId",
+          "title",
+          "description",
+          "status",
+          "priority",
+          "assigneeId",
+          "createdBy",
+          "parentTaskId",
+          "labels",
+          "startDate",
+          "dueDate",
+          "completedAt",
+          "archivedAt",
+          "position",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkMember": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["MANAGER", "CONTRIBUTOR", "VIEWER"]
+          },
+          "eligible": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "userId", "name", "role", "eligible"]
+      },
+      "WorkComment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "authorId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "author": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "text": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "authorId", "author", "text", "version", "createdAt", "updatedAt"]
+      },
+      "WorkActivity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "actor": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "action": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "taskId", "actor", "action", "metadata", "createdAt"]
+      },
+      "WorkProjectPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkProject"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkTaskPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkTask"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkMemberPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkMember"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkCommentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkComment"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkActivityPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkActivity"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": ["items", "nextCursor", "hasMore"]
+      },
+      "WorkTaskCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "in_review", "done"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "labels": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "parentTaskId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["title", "creationKey"]
+      },
+      "WorkSubtaskCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "in_review", "done"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "labels": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["title", "creationKey"]
+      },
+      "WorkTaskUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "in_review", "done"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          },
+          "labels": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "WorkProjectCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "active", "on_hold", "completed"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "color": {
+            "type": "string",
+            "enum": ["violet", "blue", "green", "amber", "rose"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["name", "slug", "creationKey"]
+      },
+      "WorkProjectUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "active", "on_hold", "completed", "archived"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "urgent"]
+          },
+          "color": {
+            "type": "string",
+            "enum": ["violet", "blue", "green", "amber", "rose"]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "WorkMove": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "boardVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "in_progress", "in_review", "done"]
+          },
+          "beforeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$",
+            "nullable": true
+          }
+        },
+        "required": ["version", "boardVersion", "status"]
+      },
+      "WorkMemberInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{24}$"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["MANAGER", "CONTRIBUTOR", "VIEWER"]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["userId", "role", "version"]
+      },
+      "WorkCommentCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "creationKey": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["text", "creationKey"]
+      },
+      "WorkCommentUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["text", "version"]
+      },
+      "WorkVersion": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["version"]
+      },
+      "WorkBoard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": ["todo", "in_progress", "in_review", "done"]
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkTask"
+                  }
+                },
+                "total": {
+                  "type": "integer"
+                },
+                "nextCursor": {
+                  "type": "integer",
+                  "nullable": true
+                }
+              },
+              "required": ["status", "items", "total", "nextCursor"]
+            }
+          }
+        },
+        "required": ["version", "readOnly", "columns"]
+      },
+      "WorkDashboard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "totalProjects": {
+            "type": "integer"
+          },
+          "activeProjects": {
+            "type": "integer"
+          },
+          "tasks": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "todo": {
+                "type": "integer"
+              },
+              "inProgress": {
+                "type": "integer"
+              },
+              "done": {
+                "type": "integer"
+              },
+              "overdue": {
+                "type": "integer"
+              },
+              "mine": {
+                "type": "integer"
+              }
+            },
+            "required": ["total", "todo", "inProgress", "done", "overdue", "mine"]
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkTask"
+            }
+          },
+          "recentProjects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{24}$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["planned", "active", "on_hold", "completed", "archived"]
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": ["id", "name", "status", "updatedAt"]
+            }
+          }
+        },
+        "required": ["totalProjects", "activeProjects", "tasks", "upcoming", "recentProjects"]
       }
     },
     "securitySchemes": {

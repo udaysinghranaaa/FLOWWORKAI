@@ -4,7 +4,7 @@
 
 FlowWork AI is an agency work management product in development. The executable Phase 2 React frontend demonstrates project delivery, tasks, client collaboration, support conversations, analytics and the planned AI experience using fictional data.
 
-**Current scope: Phase 5 company onboarding, real workspaces, memberships, invitations and database-backed RBAC, alongside preserved Phase 4 authentication and the separate public frontend demo. Local verification and live rollout blockers are recorded in [the Phase 5 report](docs/phase-5-final-report.md). Previously disclosed credentials still require private rotation. Phase 5 Atlas schema initialization and live tenant acceptance are pending; no Phase 6 work has started.**
+**Current scope: Phase 6 real projects, tasks, persistent Kanban, project grants, assignments, subtasks, comments, activity, My Tasks and workspace metrics, alongside preserved Phases 1-5 and the separate public demo. See [Phase 6 report](docs/phase-6-final-report.md) for actual verification. Private credential rotation, Phase 5 live tenant readiness and separately approved Phase 6 schema rollout remain pending. Phase 7 has not started.**
 
 ## Run locally on Windows
 
@@ -96,7 +96,7 @@ Small agencies often coordinate projects, client requests, documents and status 
 
 ## Product modules and remaining scope
 
-Real identity/sessions and company/workspace membership administration are implemented locally through Phase 5; live rollout awaits credential rotation and schema initialization. Remaining production modules: clients/contacts; projects/grants; tasks/Kanban; comments/files; milestones/client portal; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
+Real identity/sessions and company/workspace membership administration are implemented locally through Phase 5; live rollout awaits credential rotation and schema initialization. Phase 6 adds locally verified projects/grants, tasks/Kanban and comments. Remaining production modules: clients/contacts; files; milestones/client portal; support tickets; durable notifications/real-time hints; knowledge/RAG/FlowAI; scoped analytics; subscription entitlements/hosted billing. Their current frontend demonstrations are not database-backed business APIs.
 
 Launch AI is internal and read-only. Teams initially mean workspace/project membership. CRM automation, payroll, full accounting, live document editing, SSO and autonomous AI actions are outside the launch scope.
 
@@ -135,7 +135,7 @@ This trades physical tenant isolation and independent domain deployment for simp
 | 3 | Express Backend Foundation | Implemented; see Phase 3 report for verification |
 | 4 | MongoDB and Authentication | Preserved; current live rollout gates are in the Phase 5 report |
 | 5 | Companies, Workspaces, Teams and Multi-Tenancy | Implemented and isolated-tested; live schema/acceptance pending rotation |
-| 6 | Projects and Task Management | Planned |
+| 6 | Projects and Task Management | Implemented locally; see Phase 6 report for checks and live blockers |
 | 7 | Client Portal | Planned |
 | 8 | Support Ticket Management | Planned |
 | 9 | Real-Time Collaboration | Planned |
@@ -184,3 +184,7 @@ Read AGENTS.md and the relevant design documents first. Implement only the expli
 ## Phase 5 real company workspace
 
 Read [tenant architecture](docs/phase-5-multi-tenant-architecture.md), [interview notes](docs/phase-5-interview-notes.md) and [verification report](docs/phase-5-final-report.md). Real onboarding is `/app/onboarding`; authorized workspaces are `/app/workspaces`. Public `/onboarding` and `/w/studio` remain demos. After private credential rotation, run `npm.cmd run build`, `npm.cmd run db:check`, then explicitly `npm.cmd run schema:tenants -- --rotation-confirmed` in backend before starting the real server. This adds schema only; never seed or clean Atlas with test fixtures. The agent has not performed live schema installation. Run commands separately in frontend/backend; there is no root package.
+
+## Phase 6 real projects and tasks
+
+Open an authorized workspace and choose Projects, Tasks or My Tasks. Projects have scoped grants, tasks have real assignment, comments/subtasks/history, and the board persists moves and ordering. Overview counts come from scoped database aggregation. Public demo pages stay separate. Read [the architecture](docs/phase-6-architecture.md), [API inventory](docs/phase-6-api-inventory.md) and [final report](docs/phase-6-final-report.md). In backend, `npm.cmd run schema:work` prints a read-only plan. Applying schema requires private rotation, Phase 5 readiness and separate intended-environment approval; the agent has not run apply.

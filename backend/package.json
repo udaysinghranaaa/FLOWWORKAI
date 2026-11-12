@@ -19,7 +19,8 @@
     "db:check": "node --env-file-if-exists=.env dist/commands/check-database.js",
     "schema:tenants": "node --env-file-if-exists=.env dist/commands/initialize-tenants.js",
     "format": "prettier --write src tests scripts *.json *.ts *.js",
-    "format:check": "prettier --check src tests scripts *.json *.ts *.js"
+    "format:check": "prettier --check src tests scripts *.json *.ts *.js",
+    "schema:work": "node --env-file-if-exists=.env dist/commands/initialize-work.js"
   },
   "dependencies": {
     "argon2": "0.45.2",

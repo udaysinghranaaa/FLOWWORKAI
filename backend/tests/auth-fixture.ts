@@ -1,3 +1,5 @@
+import { createWorkModels, ensureWorkIndexes } from '../src/modules/work-management/work.models.js'
+import { createWorkService } from '../src/modules/work-management/work.service.js'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import request from 'supertest'
@@ -18,7 +20,7 @@ import { assertSafeTestDatabase } from './test-database-safety.js'
 export { assertSafeTestDatabase } from './test-database-safety.js'
 
 /** Never reads process.env.MONGODB_URI or .env; only generated loopback replica sets. */
-export async function createAuthFixture(options: { tenants?: boolean } = {}) {
+export async function createAuthFixture(options: { tenants?: boolean; work?: boolean } = {}) {
   const name = `flowwork_test_${randomUUID().replaceAll('-', '')}`
   const repl = await MongoMemoryReplSet.create({
     replSet: { count: 1 },
@@ -51,7 +53,8 @@ export async function createAuthFixture(options: { tenants?: boolean } = {}) {
     now,
   })
   let available = true
-  const tenantModels = options.tenants ? createTenantModels(database.connection) : undefined
+  const tenantModels =
+    options.tenants || options.work ? createTenantModels(database.connection) : undefined
   if (tenantModels) await ensureTenantIndexes(tenantModels)
   const tenants = tenantModels
     ? createTenantService({
@@ -68,6 +71,18 @@ export async function createAuthFixture(options: { tenants?: boolean } = {}) {
         now,
       })
     : undefined
+  const workModels = options.work ? createWorkModels(database.connection) : undefined
+  if (workModels) await ensureWorkIndexes(workModels)
+  const work =
+    workModels && tenants
+      ? createWorkService({
+          models: workModels,
+          tenants,
+          tenantModels: tenantModels!,
+          authModels: models,
+          now,
+        })
+      : undefined
   function app(max = 1000) {
     return createApp({
       config,
@@ -79,6 +94,7 @@ export async function createAuthFixture(options: { tenants?: boolean } = {}) {
         isReady: () => available && database.isReady(),
         rateLimitMax: max,
         ...(tenants ? { tenants } : {}),
+        ...(work ? { work } : {}),
       },
     })
   }
@@ -93,6 +109,8 @@ export async function createAuthFixture(options: { tenants?: boolean } = {}) {
     database,
     tenantModels,
     tenants,
+    workModels,
+    work,
     unavailable: (value: boolean) => {
       available = !value
     },
@@ -109,6 +127,8 @@ export async function createAuthFixture(options: { tenants?: boolean } = {}) {
       await tenants?.drainMail()
       assertSafeTestDatabase(uri, config.nodeEnv, database.connection.name)
       if (database.connection.host !== '127.0.0.1') throw new Error('Refusing non-loopback cleanup')
+      if (workModels)
+        for (const model of Object.values(workModels)) await model.collection.deleteMany({})
       await Promise.all([
         ...(tenantModels
           ? [
