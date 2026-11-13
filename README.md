@@ -39,10 +39,13 @@ Set-Location C:\FLOWWORKAI\backend
 npm.cmd install
 npm.cmd run build
 npm.cmd run db:check
-# After private credential rotation and a successful read-only check:
-npm.cmd run schema:tenants -- --rotation-confirmed
-npm.cmd run dev
+# Read-only plans; these do not initialize Atlas:
+npm.cmd run schema:tenants
+npm.cmd run schema:work
+npm.cmd run schema:clients
 ```
+
+Before starting the backend, complete the separately approved Phase 5, 6 and 7 schema rollout in order. See the [schema rollout review](docs/schema-rollout-review.md) and [exact collection/index plan](docs/schema-initialization-plan.json). All schema commands now default to a read-only plan. Applying requires private rotation confirmation, explicit schema approval and the matching environment flags; a successful database ping alone is insufficient.
 
 Default listener: `http://127.0.0.1:5000`. Preserve the existing `backend/.env`; never overwrite/copy an example over it. The existing infrastructure settings plus MONGODB_URI/JWT_SECRET are validated. Node's native env loader gives process variables precedence. Local CORS defaults allow exactly `http://localhost:5173` and `http://127.0.0.1:5173`; keep browser/API host spelling aligned. Mail links use the first configured FRONTEND_ORIGIN. Configure an exact origin if Vite chooses another port. The read-only database check prints only booleans/static diagnostics; DATABASE_URI_INVALID requires a private formatting/options correction. No Atlas user/network settings or existing credentials were changed.
 
@@ -183,7 +186,7 @@ Read AGENTS.md and the relevant design documents first. Implement only the expli
 
 ## Phase 5 real company workspace
 
-Read [tenant architecture](docs/phase-5-multi-tenant-architecture.md), [interview notes](docs/phase-5-interview-notes.md) and [verification report](docs/phase-5-final-report.md). Real onboarding is `/app/onboarding`; authorized workspaces are `/app/workspaces`. Public `/onboarding` and `/w/studio` remain demos. After private credential rotation, run `npm.cmd run build`, `npm.cmd run db:check`, then explicitly `npm.cmd run schema:tenants -- --rotation-confirmed` in backend before starting the real server. This adds schema only; never seed or clean Atlas with test fixtures. The agent has not performed live schema installation. Run commands separately in frontend/backend; there is no root package.
+Read [tenant architecture](docs/phase-5-multi-tenant-architecture.md), [interview notes](docs/phase-5-interview-notes.md) and [verification report](docs/phase-5-final-report.md). Real onboarding is `/app/onboarding`; authorized workspaces are `/app/workspaces`. Public `/onboarding` and `/w/studio` remain demos. Run `npm.cmd run schema:tenants` in backend to review the read-only plan. Live initialization requires private credential rotation and explicit environment approval; follow the schema rollout review linked above before starting the real server. This adds schema only; never seed or clean Atlas with test fixtures. The agent has not performed live schema installation. Run commands separately in frontend/backend; there is no root package.
 
 ## Phase 6 real projects and tasks
 

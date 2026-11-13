@@ -53,6 +53,42 @@ afterEach(() => {
 })
 
 describe('DNS precedes database initialization in actual process entrypoints', () => {
+  it('prints the tenant plan without connecting, even with the legacy rotation flag', async () => {
+    process.argv = ['node', 'initialize-tenants.js', '--rotation-confirmed']
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {})
+    await import('../../src/commands/initialize-tenants.js')
+    expect(state.order).toEqual([])
+    const plan = JSON.parse(String(output.mock.calls[0]?.[0]))
+    expect(plan).toMatchObject({ mode: 'plan', writes: false })
+    expect(plan.collections).toHaveLength(5)
+  })
+  it.each([
+    ['--apply'],
+    ['--apply', '--rotation-confirmed'],
+    ['--apply', '--rotation-confirmed', '--schema-approved'],
+    ['--apply', '--rotation-confirmed', '--schema-approved', '--approved-for=production'],
+  ])('blocks incomplete or wrong-environment tenant approval: %j', async (...flags) => {
+    process.argv = ['node', 'initialize-tenants.js', ...flags]
+    const output = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await import('../../src/commands/initialize-tenants.js')
+    await vi.waitFor(() => expect(output).toHaveBeenCalled())
+    expect(state.order).toEqual([])
+    expect(process.exitCode).toBe(1)
+  })
+  it('configures DNS before an explicitly approved tenant connection', async () => {
+    process.argv = [
+      'node',
+      'initialize-tenants.js',
+      '--apply',
+      '--rotation-confirmed',
+      '--schema-approved',
+      '--approved-for=development',
+    ]
+    const output = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await import('../../src/commands/initialize-tenants.js')
+    await vi.waitFor(() => expect(output).toHaveBeenCalled())
+    expect(state.order).toEqual(['dns', 'database'])
+  })
   it.each([false, true])(
     'configures the server before connecting, production flag %s',
     async (production) => {

@@ -1,0 +1,809 @@
+{
+  "environment": "development",
+  "database": "test",
+  "databaseExists": true,
+  "dnsConfigured": true,
+  "connected": true,
+  "writes": false,
+  "collections": [
+    {
+      "phase": "auth",
+      "collection": "users",
+      "exists": true,
+      "recordCount": 2,
+      "indexes": [
+        {
+          "key": {
+            "normalizedEmail": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "present"
+        }
+      ]
+    },
+    {
+      "phase": "auth",
+      "collection": "authSessions",
+      "exists": true,
+      "recordCount": 2,
+      "indexes": [
+        {
+          "key": {
+            "hashedRefreshToken": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "present"
+        },
+        {
+          "key": {
+            "tokenFamilyId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "present"
+        },
+        {
+          "key": {
+            "userId": 1,
+            "revokedAt": 1
+          },
+          "options": {},
+          "status": "present"
+        },
+        {
+          "key": {
+            "purgeAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          },
+          "status": "present"
+        }
+      ]
+    },
+    {
+      "phase": "auth",
+      "collection": "emailVerificationTokens",
+      "exists": true,
+      "recordCount": 4,
+      "indexes": [
+        {
+          "key": {
+            "hashedToken": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "present"
+        },
+        {
+          "key": {
+            "userId": 1,
+            "consumedAt": 1
+          },
+          "options": {},
+          "status": "present"
+        },
+        {
+          "key": {
+            "purgeAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          },
+          "status": "present"
+        }
+      ]
+    },
+    {
+      "phase": "auth",
+      "collection": "passwordResetTokens",
+      "exists": true,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "hashedToken": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "present"
+        },
+        {
+          "key": {
+            "userId": 1,
+            "consumedAt": 1
+          },
+          "options": {},
+          "status": "present"
+        },
+        {
+          "key": {
+            "purgeAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          },
+          "status": "present"
+        }
+      ]
+    },
+    {
+      "phase": "5",
+      "collection": "organizations",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "normalizedSlug": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "ownerUserId": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "5",
+      "collection": "workspaces",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "normalizedSlug": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "createdBy": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "5",
+      "collection": "organizationMemberships",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "userId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "role": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "role": "OWNER",
+              "status": "active"
+            }
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "5",
+      "collection": "workspaceMemberships",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "workspaceId": 1,
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "userId": 1,
+            "status": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "workspaceId": 1,
+            "role": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "role": "OWNER",
+              "status": "active"
+            }
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "5",
+      "collection": "invitations",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "invitedEmailNormalized": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "status": "pending"
+            }
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "tokenHash": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "invitedEmailNormalized": 1,
+            "status": 1,
+            "expiresAt": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "purgeAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "6",
+      "collection": "projects",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "slug": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "workspaceId": 1,
+            "createdBy": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "status": 1,
+            "updatedAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "6",
+      "collection": "projectMemberships",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "projectId": 1,
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "userId": 1,
+            "status": 1,
+            "projectId": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "6",
+      "collection": "tasks",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "projectId": 1,
+            "createdBy": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "projectId": 1,
+            "parentTaskId": 1,
+            "status": 1,
+            "position": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "archivedAt": null
+            }
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "projectId": 1,
+            "archivedAt": 1,
+            "updatedAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "assigneeId": 1,
+            "archivedAt": 1,
+            "dueDate": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "6",
+      "collection": "taskComments",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "taskId": 1,
+            "authorId": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "projectId": 1,
+            "taskId": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "6",
+      "collection": "activityEvents",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "projectId": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "taskId": 1,
+            "createdAt": -1,
+            "_id": -1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "clients",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "workspaceId": 1,
+            "createdBy": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "clientContacts",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "clientId": 1,
+            "email": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "clientId": 1,
+            "primary": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "primary": true,
+              "archivedAt": null
+            }
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "clientId": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "portalMemberships",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "clientId": 1,
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "userId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "portalInvitations",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "tokenHash": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "clientId": 1,
+            "contactId": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "status": "pending"
+            }
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "clientId": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "clientProjectGrants",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "clientId": 1,
+            "projectId": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "clientId": 1,
+            "status": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "clientResources",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "clientId": 1,
+            "projectId": 1,
+            "createdBy": 1,
+            "creationKey": 1
+          },
+          "options": {
+            "unique": true
+          },
+          "status": "missing"
+        },
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "clientId": 1,
+            "projectId": 1,
+            "kind": 1,
+            "published": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "clientId": 1,
+            "projectId": 1,
+            "parentId": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "clientId": 1,
+            "projectId": 1,
+            "kind": 1,
+            "published": 1,
+            "position": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "clientId": 1,
+            "projectId": 1,
+            "kind": 1,
+            "published": 1,
+            "dueDate": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        },
+        {
+          "key": {
+            "previousId": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "previousId": {
+                "$type": "objectId"
+              }
+            }
+          },
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "phase": "7",
+      "collection": "clientAuditEvents",
+      "exists": false,
+      "recordCount": 0,
+      "indexes": [
+        {
+          "key": {
+            "organizationId": 1,
+            "workspaceId": 1,
+            "clientId": 1,
+            "_id": 1
+          },
+          "options": {},
+          "status": "missing"
+        }
+      ]
+    }
+  ]
+}
